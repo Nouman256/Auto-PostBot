@@ -1,7 +1,7 @@
 
 name: Auto Post Bot
 
-on:
+'on':
   workflow_dispatch:
     inputs:
       publish_linkedin:
@@ -9,6 +9,13 @@ on:
         type: boolean
         required: true
         default: false
+
+      publish_facebook:
+        description: "Publish one real Facebook post?"
+        type: boolean
+        required: true
+        default: false
+
       post_slot:
         description: "Topic for manual test"
         type: choice
@@ -70,6 +77,14 @@ jobs:
           LINKEDIN_VERSION: '202609'
           PUBLISH_LINKEDIN: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish_linkedin)) && 'true' || 'false' }}
         run: python Post/LinkedIn.py
+
+      - name: Facebook Auto Posting
+        env:
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          FACEBOOK_API_VERSION: 'v26.0'
+          PUBLISH_FACEBOOK: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_facebook) && 'true' || 'false' }}
+        run: python Post/Facebook.py
 
       - name: Save Post History
         if: success() && hashFiles('post_history.json') != ''
