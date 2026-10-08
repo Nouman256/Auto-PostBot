@@ -1,4 +1,3 @@
-
 name: Auto Post Bot
 
 on:
@@ -6,20 +5,33 @@ on:
     inputs:
       publish_linkedin:
         description: "Publish one real LinkedIn post?"
-        required: true
         type: boolean
+        required: true
         default: false
-
+      post_slot:
+        description: "Topic for manual test"
+        type: choice
+        required: true
+        default: web
+        options:
+          - web
+          - seo
+          - marketing
   schedule:
     - cron: '0 3 * * *'
+    - cron: '0 11 * * *'
+    - cron: '0 19 * * *'
 
 permissions:
   contents: read
 
+concurrency:
+  group: linkedin-auto-post
+  cancel-in-progress: false
+
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -30,11 +42,20 @@ jobs:
           python-version: '3.11'
 
       - name: Install Requirements
-        run: pip install -r Post/requirements.txt
+        run: pip install requests Pillow
 
-      - name: Generate AI Posts
+      - name: Restore Post History
+        uses: actions/cache/restore@v4
+        with:
+          path: post_history.json
+          key: post-history-${{ github.run_id }}
+          restore-keys: |
+            post-history-
+
+      - name: Generate AI Post
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          POST_SLOT: ${{ github.event_name == 'workflow_dispatch' && inputs.post_slot || (github.event.schedule == '0 3 * * *' && 'web' || github.event.schedule == '0 11 * * *' && 'seo' || github.event.schedule == '0 19 * * *' && 'marketing' || 'web') }}
         run: python Post/Bot.py
 
       - name: Generate Premium Graphics
@@ -43,9 +64,16 @@ jobs:
       - name: LinkedIn Auto Posting
         env:
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
-          LINKEDIN_VERSION: "202609"
-          PUBLISH_LINKEDIN: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_linkedin && 'true' || 'false' }}
+          LINKEDIN_VERSION: '202609'
+          PUBLISH_LINKEDIN: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish_linkedin)) && 'true' || 'false' }}
         run: python Post/LinkedIn.py
+
+      - name: Save Post History
+        if: success() && hashFiles('post_history.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: post_history.json
+          key: post-history-${{ github.run_id }}
 
       - name: Upload Posts and Images
         if: always()
@@ -55,5 +83,6 @@ jobs:
           path: |
             generated_posts.json
             generated_images/
+            post_history.json
           if-no-files-found: warn
           retention-days: 7
