@@ -3,6 +3,13 @@ name: Auto Post Bot
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_linkedin:
+        description: "Publish one real LinkedIn post?"
+        required: true
+        type: boolean
+        default: false
+
   schedule:
     - cron: '0 3 * * *'
 
@@ -33,16 +40,20 @@ jobs:
       - name: Generate Premium Graphics
         run: python Post/Graphics.py
 
-      - name: Test LinkedIn Connection
+      - name: LinkedIn Auto Posting
         env:
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          LINKEDIN_VERSION: "202610"
+          PUBLISH_LINKEDIN: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_linkedin && 'true' || 'false' }}
         run: python Post/LinkedIn.py
 
       - name: Upload Posts and Images
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: premium-social-content
           path: |
             generated_posts.json
             generated_images/
+          if-no-files-found: warn
           retention-days: 7
