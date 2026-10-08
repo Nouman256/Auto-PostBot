@@ -2,9 +2,16 @@
 import os
 import json
 import time
+import random
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 
 import requests
+
+
+# ======================================
+# CONFIGURATION
+# ======================================
 
 API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -14,15 +21,170 @@ BASE_URL = (
 
 HEADERS = {
     "x-goog-api-key": API_KEY or "",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
 }
 
 TOPICS = [
     "Web Development",
     "Search Engine Optimization (SEO)",
-    "Digital Marketing"
+    "Digital Marketing",
 ]
 
+MAX_RETRIES = 3
+BASE_DELAY = 5
+MAX_DELAY = 60
+
+RETRYABLE_STATUS = {
+    429, 500, 502, 503, 504
+}
+
+SESSION = requests.Session()
+
+
+# ======================================
+# SAFE ERROR HANDLING
+# ======================================
+
+def api_error_message(response):
+    try:
+        data = response.json()
+        error = data.get("error", {})
+        return str(
+            error.get("message", "Unknown API error")
+        )[:250]
+    except (ValueError, AttributeError):
+        return f"HTTP {response.status_code}"
+
+
+def retry_delay(response, attempt):
+    delay = min(
+        BASE_DELAY * (2 ** attempt),
+        MAX_DELAY
+    )
+
+    if response is not None:
+        retry_after = response.headers.get(
+            "Retry-After"
+        )
+
+        if retry_after:
+            try:
+                delay = max(
+                    delay,
+                    float(retry_after)
+                )
+            except ValueError:
+                try:
+                    retry_date = parsedate_to_datetime(
+                        retry_after
+                    )
+                    remaining = (
+                        retry_date -
+                        datetime.now(timezone.utc)
+                    ).total_seconds()
+
+                    delay = max(
+                        delay,
+                        remaining
+                    )
+                except (ValueError, TypeError):
+                    pass
+
+    return min(
+        max(0, delay) + random.uniform(0, 1),
+        120
+    )
+
+
+# ======================================
+# HTTP REQUEST WITH AUTO RETRY
+# ======================================
+
+def request_with_retry(
+    method,
+    url,
+    *,
+    timeout=60,
+    **kwargs
+):
+    last_error = None
+
+    for attempt in range(MAX_RETRIES):
+        response = None
+
+        try:
+            response = SESSION.request(
+                method,
+                url,
+                headers=HEADERS,
+                timeout=timeout,
+                **kwargs
+            )
+
+            if response.ok:
+                return response
+
+            status = response.status_code
+            message = api_error_message(response)
+
+            if status in (401, 403):
+                raise RuntimeError(
+                    f"Gemini authentication or "
+                    f"permission error: HTTP {status}. "
+                    f"{message}"
+                )
+
+            if status in (400, 404):
+                raise ValueError(
+                    f"Model incompatible or unavailable: "
+                    f"HTTP {status}. {message}"
+                )
+
+            if status not in RETRYABLE_STATUS:
+                raise RuntimeError(
+                    f"Gemini API error HTTP {status}: "
+                    f"{message}"
+                )
+
+            last_error = (
+                f"HTTP {status}: {message}"
+            )
+
+            print(
+                f"Temporary Gemini API error: "
+                f"HTTP {status}"
+            )
+
+        except requests.RequestException as error:
+            last_error = (
+                f"Network error: {type(error).__name__}"
+            )
+
+            print(last_error)
+
+        if attempt < MAX_RETRIES - 1:
+            delay = retry_delay(
+                response,
+                attempt
+            )
+
+            print(
+                f"Retrying in {delay:.1f} seconds "
+                f"({attempt + 2}/{MAX_RETRIES})..."
+            )
+
+            time.sleep(delay)
+
+    raise RuntimeError(
+        f"Request failed after "
+        f"{MAX_RETRIES} attempts. "
+        f"Last error: {last_error}"
+    )
+
+
+# ======================================
+# DISCOVER AVAILABLE MODELS
+# ======================================
 
 def get_available_models():
     print("Checking available Gemini models...")
@@ -31,45 +193,43 @@ def get_available_models():
     page_token = None
 
     while True:
-        params = {"pageSize": 100}
+        params = {
+            "pageSize": 100
+        }
 
         if page_token:
             params["pageToken"] = page_token
 
-        response = requests.get(
+        response = request_with_retry(
+            "GET",
             f"{BASE_URL}/models",
-            headers=HEADERS,
             params=params,
             timeout=30
         )
-
-        if response.status_code != 200:
-            raise RuntimeError(
-                f"Model discovery failed: "
-                f"HTTP {response.status_code} "
-                f"{response.text[:300]}"
-            )
 
         data = response.json()
 
         for model in data.get("models", []):
             name = model.get("name", "")
+
             methods = model.get(
                 "supportedGenerationMethods", []
             )
+
+            excluded_words = [
+                "image",
+                "audio",
+                "tts",
+                "embedding",
+                "live",
+            ]
 
             if (
                 "generateContent" in methods
                 and "gemini" in name.lower()
                 and not any(
                     word in name.lower()
-                    for word in [
-                        "image",
-                        "audio",
-                        "tts",
-                        "embedding",
-                        "live"
-                    ]
+                    for word in excluded_words
                 )
             ):
                 models.append(name)
@@ -79,21 +239,30 @@ def get_available_models():
         if not page_token:
             break
 
-    # Prefer lightweight text models.
     def priority(name):
         lower = name.lower()
 
         if "flash-lite" in lower:
             return 0
+
         if "flash" in lower:
             return 1
+
         if "pro" in lower:
             return 3
+
         return 2
 
-    models = sorted(set(models), key=priority)
+    models = sorted(
+        set(models),
+        key=lambda name: (
+            priority(name),
+            name
+        )
+    )
 
-    print("Available text models:")
+    print("Compatible Gemini models found:")
+
     for model in models:
         print("-", model)
 
@@ -105,10 +274,48 @@ def get_available_models():
     return models
 
 
-def generate_post(topic, models):
-    today = datetime.now(timezone.utc).strftime(
-        "%Y-%m-%d"
+# ======================================
+# EXTRACT AI RESPONSE
+# ======================================
+
+def extract_content(data):
+    candidates = data.get(
+        "candidates", []
     )
+
+    if not candidates:
+        raise ValueError(
+            "No response candidates returned."
+        )
+
+    parts = candidates[0].get(
+        "content", {}
+    ).get("parts", [])
+
+    content = "\n".join(
+        part.get("text", "")
+        for part in parts
+        if isinstance(
+            part.get("text"), str
+        )
+    ).strip()
+
+    if not content:
+        raise ValueError(
+            "Gemini returned empty content."
+        )
+
+    return content
+
+
+# ======================================
+# GENERATE POST WITH MODEL FALLBACK
+# ======================================
+
+def generate_post(topic, models):
+    today = datetime.now(
+        timezone.utc
+    ).strftime("%Y-%m-%d")
 
     prompt = f"""
 You are a professional social media content writer.
@@ -128,12 +335,12 @@ Requirements:
 - Add 3 to 5 relevant hashtags.
 - Avoid fake statistics and unsupported claims.
 - Do not invent recent news.
-- Make the post suitable for Facebook
-  and Telegram.
+- Make the post suitable for LinkedIn,
+  Facebook and Telegram.
 - Return only the final post.
 """
 
-    last_error = None
+    errors = []
 
     for model in models:
         print(f"Trying model: {model}")
@@ -142,100 +349,82 @@ Requirements:
             f"{BASE_URL}/{model}:generateContent"
         )
 
-        for attempt in range(2):
-            try:
-                response = requests.post(
-                    url,
-                    headers=HEADERS,
-                    json={
-                        "contents": [
-                            {
-                                "parts": [
-                                    {"text": prompt}
-                                ]
-                            }
-                        ],
-                        "generationConfig": {
-                            "temperature": 0.8,
-                            "maxOutputTokens": 1200
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": prompt
                         }
-                    },
-                    timeout=90
-                )
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.8,
+                "maxOutputTokens": 1200
+            }
+        }
 
-                if response.status_code == 200:
-                    data = response.json()
+        try:
+            response = request_with_retry(
+                "POST",
+                url,
+                json=payload,
+                timeout=90
+            )
 
-                    candidates = data.get(
-                        "candidates", []
-                    )
+            content = extract_content(
+                response.json()
+            )
 
-                    if not candidates:
-                        raise RuntimeError(
-                            "No candidates returned."
-                        )
+            print(
+                f"Post generated with {model}"
+            )
 
-                    parts = candidates[0].get(
-                        "content", {}
-                    ).get("parts", [])
+            return content, model
 
-                    content = "\n".join(
-                        part.get("text", "")
-                        for part in parts
-                    ).strip()
+        except ValueError as error:
+            errors.append(
+                f"{model}: {error}"
+            )
 
-                    if not content:
-                        raise RuntimeError(
-                            "Empty AI response."
-                        )
+            print(
+                "Model incompatible or empty. "
+                "Trying next model..."
+            )
 
-                    return content, model
+        except RuntimeError as error:
+            error_text = str(error)
 
-                if response.status_code in (
-                    400, 404
-                ):
-                    print(
-                        f"Model unavailable or "
-                        f"incompatible: {model}"
-                    )
-                    break
+            if (
+                "authentication" in error_text.lower()
+                or "permission error" in error_text.lower()
+            ):
+                raise
 
-                if response.status_code == 429:
-                    raise RuntimeError(
-                        "API quota or rate limit reached. "
-                        "Check your free-tier limits."
-                    )
+            errors.append(
+                f"{model}: {error_text}"
+            )
 
-                if response.status_code in (
-                    401, 403
-                ):
-                    raise RuntimeError(
-                        "API authentication or "
-                        "permission error."
-                    )
-
-                if response.status_code >= 500:
-                    if attempt == 0:
-                        time.sleep(3)
-                        continue
-
-                raise RuntimeError(
-                    f"API HTTP {response.status_code}: "
-                    f"{response.text[:300]}"
-                )
-
-            except requests.RequestException as error:
-                last_error = str(error)
-                if attempt == 0:
-                    time.sleep(3)
-                    continue
-                print(f"Network error: {error}")
+            print(
+                "Model failed. "
+                "Trying next model..."
+            )
 
     raise RuntimeError(
-        f"All suitable models failed. "
-        f"Last error: {last_error}"
+        "All compatible Gemini models failed. "
+        "Last error: "
+        + (
+            errors[-1]
+            if errors
+            else "Unknown error"
+        )
     )
 
+
+# ======================================
+# MAIN
+# ======================================
 
 def main():
     if not API_KEY:
@@ -246,13 +435,17 @@ def main():
     print("AI Auto Post Bot Started")
 
     models = get_available_models()
+
     posts = []
 
     for topic in TOPICS:
-        print(f"\nGenerating post: {topic}")
+        print(
+            f"\nGenerating post: {topic}"
+        )
 
         content, model = generate_post(
-            topic, models
+            topic,
+            models
         )
 
         posts.append({
@@ -264,7 +457,11 @@ def main():
             ).isoformat()
         })
 
-        print(content)
+        print(
+            f"Generated {len(content)} "
+            f"characters for {topic}"
+        )
+
         print("-" * 50)
 
         time.sleep(2)
