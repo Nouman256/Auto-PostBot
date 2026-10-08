@@ -33,6 +33,11 @@ jobs:
       - name: Generate Premium Graphics
         run: python Post/Graphics.py
 
+      - name: Test LinkedIn Connection
+        env:
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+        run: python Post/LinkedIn.py
+
       - name: Upload Posts and Images
         uses: actions/upload-artifact@v4
         with:
