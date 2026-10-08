@@ -1,6 +1,9 @@
 
 import os
 import json
+import re
+import hashlib
+from pathlib import Path
 import time
 import random
 from datetime import datetime, timezone
@@ -312,114 +315,69 @@ def extract_content(data):
 # GENERATE POST WITH MODEL FALLBACK
 # ======================================
 
-def generate_post(topic, models):
-    today = datetime.now(
-        timezone.utc
-    ).strftime("%Y-%m-%d")
+def validate_post(data, topic):
+    if not isinstance(data, dict):
+        raise ValueError("AI response is not a JSON object")
+    required = ("content", "image_headline", "image_subheading")
+    if any(not isinstance(data.get(k), str) or not data[k].strip() for k in required):
+        raise ValueError("Missing content or image copy")
+    content = data["content"].strip()
+    words = len(content.split())
+    if not 110 <= words <= 260:
+        raise ValueError(f"Caption length outside 110-260 words: {words}")
+    if len(data["image_headline"]) > 58 or len(data["image_subheading"]) > 105:
+        raise ValueError("Image copy is too long")
+    if content.count("#") > 3:
+        raise ValueError("Too many hashtags")
+    banned = ("in today's digital landscape", "unlock your potential", "stop scrolling", "skyrocket your growth")
+    if any(x in content.lower() for x in banned):
+        raise ValueError("Generic promotional wording detected")
+    data["topic"] = topic
+    data["content"] = content
+    return data
 
-    prompt = f"""
-You are a professional social media content writer.
 
-Date: {today}
-Topic category: {topic}
+def generate_post(topic, models, recent_topics):
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    prompt = f"""You are an expert LinkedIn editorial strategist and technical practitioner.
+Create ONE original, useful post for a digital marketing/web development professional.
+Audience: founders, business owners, marketers, website owners, and potential B2B clients.
+Today: {today}. Content pillar: {topic}.
+Recently covered ideas (avoid similar angles): {json.dumps(recent_topics[-25:])}.
 
-Create one original educational social media post.
-
-Requirements:
-- Write in English and Urdu script.
-- Give practical and accurate advice.
-- Use a professional, engaging tone.
-- Maximum 250 words total.
-- Include a strong opening.
-- Add a practical example or useful tip.
-- Add 3 to 5 relevant hashtags.
-- Avoid fake statistics and unsupported claims.
-- Do not invent recent news.
-- Make the post suitable for LinkedIn,
-  Facebook and Telegram.
-- Return only the final post.
+Think carefully before writing: select a narrow real-world problem, one defensible insight,
+and a practical example or decision framework. Vary the opening and structure naturally.
+Write natural professional ENGLISH only, 140-210 words, no filler or emojis.
+Use short natural paragraphs, clear practical advice and at most 3 relevant hashtags.
+No invented numbers, experiences, client stories, tests, news, platform changes or guarantees.
+Never impersonate the author as having done work unless facts are supplied.
+No engagement bait, generic motivational hooks, exaggerated claims, or artificial questions.
+End naturally. Make the post specific enough to teach a reader something useful.
+Image headline must be specific to this post, 3-8 words, <=58 characters.
+Image subheading should summarize a concrete takeaway in <=105 characters.
+Return ONLY valid JSON (no Markdown) with string keys:
+"title", "content", "image_headline", "image_subheading".
 """
-
     errors = []
-
     for model in models:
         print(f"Trying model: {model}")
-
-        url = (
-            f"{BASE_URL}/{model}:generateContent"
-        )
-
+        url = f"{BASE_URL}/{model}:generateContent"
         payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {
-                            "text": prompt
-                        }
-                    ]
-                }
-            ],
-            "generationConfig": {
-                "temperature": 0.8,
-                "maxOutputTokens": 1200
-            }
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1600, "responseMimeType": "application/json"},
         }
-
         try:
-            response = request_with_retry(
-                "POST",
-                url,
-                json=payload,
-                timeout=90
-            )
-
-            content = extract_content(
-                response.json()
-            )
-
-            print(
-                f"Post generated with {model}"
-            )
-
-            return content, model
-
-        except ValueError as error:
-            errors.append(
-                f"{model}: {error}"
-            )
-
-            print(
-                "Model incompatible or empty. "
-                "Trying next model..."
-            )
-
-        except RuntimeError as error:
-            error_text = str(error)
-
-            if (
-                "authentication" in error_text.lower()
-                or "permission error" in error_text.lower()
-            ):
+            response = request_with_retry("POST", url, json=payload, timeout=90)
+            raw = extract_content(response.json()).strip()
+            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.I)
+            post = validate_post(json.loads(raw), topic)
+            return post, model
+        except (ValueError, json.JSONDecodeError, RuntimeError) as error:
+            if "authentication" in str(error).lower() or "permission error" in str(error).lower():
                 raise
-
-            errors.append(
-                f"{model}: {error_text}"
-            )
-
-            print(
-                "Model failed. "
-                "Trying next model..."
-            )
-
-    raise RuntimeError(
-        "All compatible Gemini models failed. "
-        "Last error: "
-        + (
-            errors[-1]
-            if errors
-            else "Unknown error"
-        )
-    )
+            errors.append(f"{model}: {error}")
+            print("Model output rejected; trying next model")
+    raise RuntimeError("Could not generate a quality-checked post: " + (errors[-1] if errors else "unknown"))
 
 
 # ======================================
@@ -428,60 +386,23 @@ Requirements:
 
 def main():
     if not API_KEY:
-        raise RuntimeError(
-            "GEMINI_API_KEY secret is missing."
-        )
-
-    print("AI Auto Post Bot Started")
-
+        raise RuntimeError("GEMINI_API_KEY secret is missing")
+    slot = os.getenv("POST_SLOT", "web").lower()
+    slot_topics = {"web": TOPICS[0], "seo": TOPICS[1], "marketing": TOPICS[2]}
+    if slot not in slot_topics:
+        raise RuntimeError(f"Unknown POST_SLOT: {slot}")
+    topic = slot_topics[slot]
+    history_path = Path("post_history.json")
+    history = json.loads(history_path.read_text(encoding="utf-8")) if history_path.exists() else []
+    if not isinstance(history, list):
+        history = []
     models = get_available_models()
-
-    posts = []
-
-    for topic in TOPICS:
-        print(
-            f"\nGenerating post: {topic}"
-        )
-
-        content, model = generate_post(
-            topic,
-            models
-        )
-
-        posts.append({
-            "topic": topic,
-            "model": model,
-            "content": content,
-            "created_at": datetime.now(
-                timezone.utc
-            ).isoformat()
-        })
-
-        print(
-            f"Generated {len(content)} "
-            f"characters for {topic}"
-        )
-
-        print("-" * 50)
-
-        time.sleep(2)
-
-    with open(
-        "generated_posts.json",
-        "w",
-        encoding="utf-8"
-    ) as file:
-        json.dump(
-            posts,
-            file,
-            ensure_ascii=False,
-            indent=2
-        )
-
-    print(
-        f"Successfully generated "
-        f"{len(posts)} posts!"
-    )
+    post, model = generate_post(topic, models, [x.get("title", "") for x in history if isinstance(x, dict)])
+    post["model"] = model
+    post["slot"] = slot
+    post["created_at"] = datetime.now(timezone.utc).isoformat()
+    Path("generated_posts.json").write_text(json.dumps([post], ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Created one validated {topic} post: {len(post['content'])} characters")
 
 
 if __name__ == "__main__":
