@@ -1,87 +1,678 @@
-name: Auto Post Bot
 
-on:
-  workflow_dispatch:
-    inputs:
-      publish_linkedin:
-        description: "Publish one real LinkedIn post?"
-        type: boolean
-        required: true
-        default: false
-      post_slot:
-        description: "Topic for manual test"
-        type: choice
-        required: true
-        default: web
-        options:
-          - web
-          - seo
-          - marketing
-   schedule:
-    - cron: '7 3 * * *'
-    - cron: '7 11 * * *'
-    - cron: '7 19 * * *'
-permissions:
-  contents: read
+import os
+import json
+import re
+import time
+import random
+from pathlib import Path
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 
-concurrency:
-  group: linkedin-auto-post
-  cancel-in-progress: false
+import requests
 
-jobs:
-  run-bot:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+# ======================================
+# CONFIGURATION
+# ======================================
 
-      - name: Install Requirements
-        run: pip install requests Pillow
+API_KEY = os.getenv("GEMINI_API_KEY")
 
-      - name: Restore Post History
-        uses: actions/cache/restore@v4
-        with:
-          path: post_history.json
-          key: post-history-${{ github.run_id }}
-          restore-keys: |
-            post-history-
+BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
-      - name: Generate AI Post
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          POST_SLOT: ${{ github.event_name == 'workflow_dispatch' && inputs.post_slot || (github.event.schedule == '0 3 * * *' && 'web' || github.event.schedule == '0 11 * * *' && 'seo' || github.event.schedule == '0 19 * * *' && 'marketing' || 'web') }}
-        run: python Post/Bot.py
+HEADERS = {
+    "x-goog-api-key": API_KEY or "",
+    "Content-Type": "application/json",
+}
 
-      - name: Generate Premium Graphics
-        run: python Post/Graphics.py
+TOPICS = [
+    "Web Development",
+    "Search Engine Optimization (SEO)",
+    "Digital Marketing",
+]
 
-      - name: LinkedIn Auto Posting
-        env:
-          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
-          LINKEDIN_VERSION: '202609'
-          PUBLISH_LINKEDIN: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish_linkedin)) && 'true' || 'false' }}
-        run: python Post/LinkedIn.py
+MAX_RETRIES = 3
+BASE_DELAY = 5
+MAX_DELAY = 60
 
-      - name: Save Post History
-        if: success() && hashFiles('post_history.json') != ''
-        uses: actions/cache/save@v4
-        with:
-          path: post_history.json
-          key: post-history-${{ github.run_id }}
+RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 
-      - name: Upload Posts and Images
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: premium-social-content
-          path: |
-            generated_posts.json
-            generated_images/
-            post_history.json
-          if-no-files-found: warn
-          retention-days: 7
+SESSION = requests.Session()
+
+
+# ======================================
+# SAFE ERROR HANDLING
+# ======================================
+
+def api_error_message(response):
+    try:
+        data = response.json()
+        error = data.get("error", {})
+        return str(
+            error.get("message", "Unknown API error")
+        )[:250]
+    except (ValueError, AttributeError):
+        return f"HTTP {response.status_code}"
+
+
+def retry_delay(response, attempt):
+    delay = min(
+        BASE_DELAY * (2 ** attempt),
+        MAX_DELAY
+    )
+
+    if response is not None:
+        retry_after = response.headers.get("Retry-After")
+
+        if retry_after:
+            try:
+                delay = max(delay, float(retry_after))
+            except ValueError:
+                try:
+                    retry_date = parsedate_to_datetime(
+                        retry_after
+                    )
+                    remaining = (
+                        retry_date - datetime.now(timezone.utc)
+                    ).total_seconds()
+                    delay = max(delay, remaining)
+                except (ValueError, TypeError):
+                    pass
+
+    return min(
+        max(0, delay) + random.uniform(0, 1),
+        120
+    )
+
+
+# ======================================
+# HTTP REQUEST WITH AUTO RETRY
+# ======================================
+
+def request_with_retry(
+    method,
+    url,
+    *,
+    timeout=60,
+    **kwargs
+):
+    last_error = None
+
+    for attempt in range(MAX_RETRIES):
+        response = None
+
+        try:
+            response = SESSION.request(
+                method,
+                url,
+                headers=HEADERS,
+                timeout=timeout,
+                **kwargs
+            )
+
+            if response.ok:
+                return response
+
+            status = response.status_code
+            message = api_error_message(response)
+
+            if status in (401, 403):
+                raise RuntimeError(
+                    f"Gemini authentication or permission error: "
+                    f"HTTP {status}. {message}"
+                )
+
+            if status in (400, 404):
+                raise ValueError(
+                    f"Model incompatible or unavailable: "
+                    f"HTTP {status}. {message}"
+                )
+
+            if status not in RETRYABLE_STATUS:
+                raise RuntimeError(
+                    f"Gemini API error HTTP {status}: {message}"
+                )
+
+            last_error = f"HTTP {status}: {message}"
+            print(f"Temporary Gemini API error: HTTP {status}")
+
+        except requests.RequestException as error:
+            last_error = (
+                f"Network error: {type(error).__name__}"
+            )
+            print(last_error)
+
+        if attempt < MAX_RETRIES - 1:
+            delay = retry_delay(response, attempt)
+
+            print(
+                f"Retrying in {delay:.1f} seconds "
+                f"({attempt + 2}/{MAX_RETRIES})..."
+            )
+
+            time.sleep(delay)
+
+    raise RuntimeError(
+        f"Request failed after {MAX_RETRIES} attempts. "
+        f"Last error: {last_error}"
+    )
+
+
+# ======================================
+# DISCOVER AVAILABLE GEMINI MODELS
+# ======================================
+
+def get_available_models():
+    print("Checking available Gemini models...")
+
+    models = []
+    page_token = None
+
+    while True:
+        params = {"pageSize": 100}
+
+        if page_token:
+            params["pageToken"] = page_token
+
+        response = request_with_retry(
+            "GET",
+            f"{BASE_URL}/models",
+            params=params,
+            timeout=30
+        )
+
+        data = response.json()
+
+        for model in data.get("models", []):
+            name = model.get("name", "")
+
+            methods = model.get(
+                "supportedGenerationMethods", []
+            )
+
+            excluded_words = [
+                "image",
+                "audio",
+                "tts",
+                "embedding",
+                "live",
+            ]
+
+            if (
+                "generateContent" in methods
+                and "gemini" in name.lower()
+                and not any(
+                    word in name.lower()
+                    for word in excluded_words
+                )
+            ):
+                models.append(name)
+
+        page_token = data.get("nextPageToken")
+
+        if not page_token:
+            break
+
+    def priority(name):
+        lower = name.lower()
+
+        if "flash-lite" in lower:
+            return 0
+
+        if "flash" in lower:
+            return 1
+
+        if "pro" in lower:
+            return 3
+
+        return 2
+
+    models = sorted(
+        set(models),
+        key=lambda name: (priority(name), name)
+    )
+
+    print("Compatible Gemini models found:")
+
+    for model in models:
+        print("-", model)
+
+    if not models:
+        raise RuntimeError(
+            "No compatible Gemini text models found."
+        )
+
+    return models
+
+
+# ======================================
+# EXTRACT AI RESPONSE
+# ======================================
+
+def extract_content(data):
+    candidates = data.get("candidates", [])
+
+    if not candidates:
+        raise ValueError(
+            "No response candidates returned."
+        )
+
+    parts = candidates[0].get(
+        "content", {}
+    ).get("parts", [])
+
+    content = "\n".join(
+        part.get("text", "")
+        for part in parts
+        if isinstance(part.get("text"), str)
+    ).strip()
+
+    if not content:
+        raise ValueError(
+            "Gemini returned empty content."
+        )
+
+    return content
+
+
+# ======================================
+# CONTENT QUALITY VALIDATION
+# ======================================
+
+def validate_post(data, topic):
+    """
+    Reject content that does not meet
+    the required quality standards.
+    """
+
+    if not isinstance(data, dict):
+        raise ValueError(
+            "AI response is not a JSON object"
+        )
+
+    required = (
+        "title",
+        "content",
+        "image_headline",
+        "image_subheading"
+    )
+
+    if any(
+        not isinstance(data.get(k), str)
+        or not data[k].strip()
+        for k in required
+    ):
+        raise ValueError(
+            "Missing title, caption, or image copy"
+        )
+
+    content = data["content"].strip()
+    words = len(content.split())
+
+    if not 120 <= words <= 180:
+        raise ValueError(
+            f"Caption length outside 120-180 words: {words}"
+        )
+
+    # Roman Urdu only, no native Urdu/Hindi script
+    if re.search(
+        r"[\u0600-\u06FF\u0750-\u077F\u0900-\u097F]",
+        content
+    ):
+        raise ValueError(
+            "Urdu/Hindi script detected; Roman Urdu required"
+        )
+
+    # Check bilingual sections
+    blocks = re.split(r"\n\s*\n", content)
+
+    english_blocks = [
+        x for x in blocks
+        if x.strip().startswith("English:")
+    ]
+
+    roman_blocks = [
+        x for x in blocks
+        if x.strip().startswith("Roman Urdu:")
+    ]
+
+    if (
+        len(english_blocks) != 1
+        or len(roman_blocks) != 1
+    ):
+        raise ValueError(
+            "Expected one English: and one Roman Urdu: section"
+        )
+
+    if content.index("English:") > content.index("Roman Urdu:"):
+        raise ValueError(
+            "English section must come before Roman Urdu"
+        )
+
+    english_text = (
+        content.split("English:", 1)[1]
+        .split("Roman Urdu:", 1)[0]
+    )
+
+    roman_text = content.split("Roman Urdu:", 1)[1]
+
+    english_count = len(english_text.split())
+
+    roman_count = len(
+        re.sub(r"#\w+", "", roman_text).split()
+    )
+
+    ratio = english_count / max(
+        english_count + roman_count, 1
+    )
+
+    if not 0.60 <= ratio <= 0.80 or roman_count < 25:
+        raise ValueError(
+            f"Bilingual ratio not near 70/30: "
+            f"English {english_count}, "
+            f"Roman Urdu {roman_count}"
+        )
+
+    # Hashtags
+    hashtags = re.findall(
+        r"(?<!\w)#[A-Za-z][A-Za-z0-9_]*",
+        content
+    )
+
+    if len(hashtags) > 3:
+        raise ValueError("Too many hashtags")
+
+    # No emoji
+    if re.search(
+        r"[\U0001F300-\U0001FAFF]",
+        content
+    ):
+        raise ValueError("Emoji found in caption")
+
+    headline = data["image_headline"].strip()
+    subheading = data["image_subheading"].strip()
+
+    if len(headline) > 58 or len(subheading) > 105:
+        raise ValueError("Image copy is too long")
+
+    if not 3 <= len(headline.split()) <= 8:
+        raise ValueError(
+            "Image headline must contain 3-8 words"
+        )
+
+    if re.search(
+        r"[\u0600-\u06FF\u0900-\u097F]",
+        headline + subheading
+    ):
+        raise ValueError(
+            "Image copy must use Latin characters"
+        )
+
+    # Avoid generic AI-style phrases
+    banned = (
+        "in today's digital landscape",
+        "unlock your potential",
+        "stop scrolling",
+        "skyrocket your growth",
+        "game-changer",
+        "revolutionize your business",
+        "in this fast-paced world"
+    )
+
+    if any(
+        term in content.lower()
+        for term in banned
+    ):
+        raise ValueError(
+            "Generic promotional wording detected"
+        )
+
+    data["topic"] = topic
+    data["title"] = data["title"].strip()
+    data["content"] = content
+    data["image_headline"] = headline
+    data["image_subheading"] = subheading
+
+    return data
+
+
+# ======================================
+# GENERATE PROFESSIONAL LINKEDIN POST
+# ======================================
+
+def generate_post(topic, models, recent_topics):
+    today = datetime.now(
+        timezone.utc
+    ).strftime("%Y-%m-%d")
+
+    prompt = f"""
+You are a senior LinkedIn editor and hands-on
+web/SEO/marketing strategist.
+
+Create ONE insightful original professional post
+for a digital marketing practitioner's personal LinkedIn.
+
+Audience:
+Founders, business owners, marketers,
+and B2B decision makers.
+
+Today (UTC): {today}
+Content pillar: {topic}
+
+Recently covered ideas:
+{json.dumps(recent_topics[-25:])}
+
+Avoid repeating these specific angles.
+
+CONTENT QUALITY:
+Select a narrow, practical issue.
+
+Give one defensible, useful insight and a concrete
+example, checklist item, trade-off, or action.
+
+Keep a helpful human voice with short paragraphs,
+not a formal essay.
+
+Do not invent personal experience, client results,
+statistics, SEO ranking claims, platform changes,
+tests, or guarantees.
+
+Avoid emoji, hype, engagement bait, clichés,
+and forced closing questions.
+
+LANGUAGE AND FORMAT RULES:
+
+- Caption must have 120-180 words total.
+- Write about 70% professional English.
+- Write about 30% conversational Roman Urdu.
+- NEVER use Urdu or Hindi native script.
+- Roman Urdu must use Latin characters.
+
+Use these exact sections in order:
+
+English:
+(2-3 short English paragraphs with
+specific observations and useful advice)
+
+Roman Urdu:
+(1-2 natural Roman Urdu paragraphs
+adding practical advice, not a translation)
+
+- English section should be 60-80% of body.
+- Roman Urdu should be about 20-40%.
+- Use 0-3 relevant hashtags at the end.
+- No extra headings.
+- No numbered lists.
+- No bullet lists.
+- No markdown fences.
+- Keep the same professional voice.
+
+VISUAL GRAPHICS RULES:
+
+- Image headline must be in English.
+- Headline must have 3-8 words.
+- Maximum headline length: 58 characters.
+- Image subheading maximum: 105 characters.
+- Graphic text must match the actual post.
+- Avoid generic visual messages.
+- Title must be a concise English topic label.
+- Avoid repeating recent titles.
+
+Return ONLY valid JSON with string keys:
+
+"title"
+"content"
+"image_headline"
+"image_subheading"
+
+Do not return Markdown.
+"""
+
+    errors = []
+
+    for model in models:
+        print(f"Trying model: {model}")
+
+        url = f"{BASE_URL}/{model}:generateContent"
+
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": prompt}
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.7,
+                "maxOutputTokens": 1600,
+                "responseMimeType": "application/json"
+            }
+        }
+
+        try:
+            response = request_with_retry(
+                "POST",
+                url,
+                json=payload,
+                timeout=90
+            )
+
+            raw = extract_content(
+                response.json()
+            ).strip()
+
+            raw = re.sub(
+                r"^```(?:json)?\s*|\s*```$",
+                "",
+                raw,
+                flags=re.I
+            )
+
+            post = validate_post(
+                json.loads(raw),
+                topic
+            )
+
+            return post, model
+
+        except (
+            ValueError,
+            json.JSONDecodeError,
+            RuntimeError
+        ) as error:
+
+            if (
+                "authentication" in str(error).lower()
+                or "permission error" in str(error).lower()
+            ):
+                raise
+
+            errors.append(f"{model}: {error}")
+
+            print(
+                "Model output rejected; trying next model"
+            )
+
+    raise RuntimeError(
+        "Could not generate a quality-checked post: "
+        + (errors[-1] if errors else "unknown")
+    )
+
+
+# ======================================
+# MAIN BOT
+# ======================================
+
+def main():
+    if not API_KEY:
+        raise RuntimeError(
+            "GEMINI_API_KEY secret is missing"
+        )
+
+    slot = os.getenv(
+        "POST_SLOT", "web"
+    ).lower()
+
+    slot_topics = {
+        "web": TOPICS[0],
+        "seo": TOPICS[1],
+        "marketing": TOPICS[2]
+    }
+
+    if slot not in slot_topics:
+        raise RuntimeError(
+            f"Unknown POST_SLOT: {slot}"
+        )
+
+    topic = slot_topics[slot]
+
+    history_path = Path("post_history.json")
+
+    history = (
+        json.loads(
+            history_path.read_text(
+                encoding="utf-8"
+            )
+        )
+        if history_path.exists()
+        else []
+    )
+
+    if not isinstance(history, list):
+        history = []
+
+    models = get_available_models()
+
+    post, model = generate_post(
+        topic,
+        models,
+        [
+            x.get("title", "")
+            for x in history
+            if isinstance(x, dict)
+        ]
+    )
+
+    post["model"] = model
+    post["slot"] = slot
+    post["created_at"] = datetime.now(
+        timezone.utc
+    ).isoformat()
+
+    Path("generated_posts.json").write_text(
+        json.dumps(
+            [post],
+            ensure_ascii=False,
+            indent=2
+        ),
+        encoding="utf-8"
+    )
+
+    print(
+        f"Created one validated {topic} post: "
+        f"{len(post['content'])} characters"
+    )
+
+
+if __name__ == "__main__":
+    main()
