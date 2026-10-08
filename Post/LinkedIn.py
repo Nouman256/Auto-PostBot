@@ -6,44 +6,56 @@ ACCESS_TOKEN = os.getenv("LINKEDIN_ACCESS_TOKEN")
 
 
 def test_linkedin():
-    print("Checking LinkedIn configuration...")
+    print("Starting LinkedIn API connection test...")
 
     if not ACCESS_TOKEN:
         raise RuntimeError(
             "LINKEDIN_ACCESS_TOKEN is missing."
         )
 
-    print("LinkedIn access token is configured.")
-    print("Checking token with LinkedIn API...")
-
     url = "https://api.linkedin.com/v2/userinfo"
 
-    response = requests.get(
-        url,
-        headers={
-            "Authorization": f"Bearer {ACCESS_TOKEN}"
-        },
-        timeout=30
-    )
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Accept": "application/json"
+    }
 
-    if response.status_code == 200:
-        print("LinkedIn userinfo request successful.")
-    elif response.status_code == 403:
-        print(
-            "Userinfo permission is not available. "
-            "This does not prove posting access failed."
-        )
-    elif response.status_code == 401:
-        raise RuntimeError(
-            "LinkedIn token is invalid or expired."
-        )
-    else:
-        raise RuntimeError(
-            f"LinkedIn returned HTTP "
-            f"{response.status_code}"
+    try:
+        response = requests.get(
+            url,
+            headers=headers,
+            timeout=30
         )
 
-    print("No LinkedIn post was published.")
+        if response.status_code != 200:
+            print(
+                "LinkedIn API returned HTTP",
+                response.status_code
+            )
+            raise RuntimeError(
+                "LinkedIn authentication failed. "
+                "Check OAuth permissions and token."
+            )
+
+        data = response.json()
+
+        member_id = data.get("sub")
+
+        if not member_id:
+            raise RuntimeError(
+                "LinkedIn member ID not found."
+            )
+
+        print("LinkedIn API connection successful!")
+        print("Member ID:", member_id)
+        print("Author URN:", f"urn:li:person:{member_id}")
+        print("Personal profile identification complete.")
+        print("No LinkedIn post has been published.")
+
+    except requests.RequestException as error:
+        raise RuntimeError(
+            "LinkedIn API request failed."
+        ) from error
 
 
 if __name__ == "__main__":
