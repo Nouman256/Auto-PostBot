@@ -4,40 +4,46 @@ import requests
 
 ACCESS_TOKEN = os.getenv("LINKEDIN_ACCESS_TOKEN")
 
-if not ACCESS_TOKEN:
-    raise RuntimeError(
-        "LINKEDIN_ACCESS_TOKEN is missing"
-    )
-
-HEADERS = {
-    "Authorization": f"Bearer {ACCESS_TOKEN}",
-    "X-Restli-Protocol-Version": "2.0.0"
-}
-
 
 def test_linkedin():
-    print("Testing LinkedIn API connection...")
+    print("Checking LinkedIn configuration...")
 
-    url = "https://api.linkedin.com/v2/me"
+    if not ACCESS_TOKEN:
+        raise RuntimeError(
+            "LINKEDIN_ACCESS_TOKEN is missing."
+        )
+
+    print("LinkedIn access token is configured.")
+    print("Checking token with LinkedIn API...")
+
+    url = "https://api.linkedin.com/v2/userinfo"
 
     response = requests.get(
         url,
-        headers=HEADERS,
+        headers={
+            "Authorization": f"Bearer {ACCESS_TOKEN}"
+        },
         timeout=30
     )
 
     if response.status_code == 200:
-        print("LinkedIn connection successful!")
-        print("Personal profile API accessible.")
-    else:
+        print("LinkedIn userinfo request successful.")
+    elif response.status_code == 403:
         print(
-            f"LinkedIn API returned HTTP "
+            "Userinfo permission is not available. "
+            "This does not prove posting access failed."
+        )
+    elif response.status_code == 401:
+        raise RuntimeError(
+            "LinkedIn token is invalid or expired."
+        )
+    else:
+        raise RuntimeError(
+            f"LinkedIn returned HTTP "
             f"{response.status_code}"
         )
-        print(response.text[:300])
-        raise RuntimeError(
-            "LinkedIn connection test failed."
-        )
+
+    print("No LinkedIn post was published.")
 
 
 if __name__ == "__main__":
