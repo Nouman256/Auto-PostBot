@@ -25,5 +25,14 @@ jobs:
       - name: Install Requirements
         run: pip install -r Post/requirements.txt
 
-      - name: Run Bot
+      - name: Generate AI Posts
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python Post/Bot.py
+
+      - name: Save Generated Posts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-generated-posts
+          path: generated_posts.json
+          retention-days: 7
