@@ -43,7 +43,7 @@ jobs:
       - name: LinkedIn Auto Posting
         env:
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
-         LINKEDIN_VERSION: "202609"
+          LINKEDIN_VERSION: "202609"
           PUBLISH_LINKEDIN: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_linkedin && 'true' || 'false' }}
         run: python Post/LinkedIn.py
 
