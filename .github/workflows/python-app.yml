@@ -17,11 +17,10 @@ on:
           - web
           - seo
           - marketing
-  schedule:
-    - cron: '0 3 * * *'
-    - cron: '0 11 * * *'
-    - cron: '0 19 * * *'
-
+   schedule:
+    - cron: '7 3 * * *'
+    - cron: '7 11 * * *'
+    - cron: '7 19 * * *'
 permissions:
   contents: read
 
