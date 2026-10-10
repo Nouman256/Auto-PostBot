@@ -342,6 +342,10 @@ def validate_post(data, topic):
     banned = ("in today's digital landscape", "unlock your potential", "stop scrolling", "skyrocket your growth")
     if any(x in caption.lower() for caption in (linked, face) for x in banned):
         raise ValueError("Generic promotional wording detected")
+    for key in ("linkedin_visual_points", "facebook_visual_points"):
+        points = data.get(key)
+        if not isinstance(points, list) or len(points) != 3 or any(not isinstance(p, str) or not 3 <= len(p.strip()) <= 38 for p in points):
+            raise ValueError(f"{key}: expected 3 concise visual points (3-38 characters)")
     data["topic"] = topic
     data["content"] = linked  # IMPORTANT: existing LinkedIn publisher reads this
     data["facebook_content"] = face  # Facebook publisher should read this new key
@@ -373,11 +377,15 @@ VISUAL COPY:
 - 'facebook_image_headline': different 3-7-word hook, max 58 characters.
 - 'facebook_image_subheading': one concise takeaway, max 105 characters.
 - Make headlines readable at a glance; NO hashtags, emoji, or fake statistics in image copy.
+- 'linkedin_visual_points': exactly three distinct and specific short actionable labels (3-38 chars each).
+- 'facebook_visual_points': exactly three different practical labels (3-38 chars each).
+- Points MUST be relevant to the chosen topic/angle, not generic placeholders.
 
 Never invent numerical results, client stories, experience, credentials, algorithm facts or guarantees.
 Avoid hype, generic AI phrasing, emoji clutter, engagement bait, excessive hashtags and fake case studies.
 Return ONLY valid JSON with string keys:
-"title", "content", "facebook_content", "image_headline", "image_subheading", "facebook_image_headline", "facebook_image_subheading".
+"title", "content", "facebook_content", "image_headline", "image_subheading", "facebook_image_headline", "facebook_image_subheading", "linkedin_visual_points", "facebook_visual_points".
+The two visual_points keys must be arrays of exactly three strings; all other keys are strings.
 """
     errors = []
     for model in models:
@@ -385,7 +393,7 @@ Return ONLY valid JSON with string keys:
         url = f"{BASE_URL}/{model}:generateContent"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 2400, "responseMimeType": "application/json"},
+            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 3200, "responseMimeType": "application/json"},
         }
         try:
             response = request_with_retry("POST", url, json=payload, timeout=90)
