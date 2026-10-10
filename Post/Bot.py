@@ -316,47 +316,68 @@ def extract_content(data):
 # ======================================
 
 def validate_post(data, topic):
+    """Preserve old output keys for existing publishing integrations."""
     if not isinstance(data, dict):
         raise ValueError("AI response is not a JSON object")
-    required = ("content", "image_headline", "image_subheading")
+    required = ("content", "facebook_content", "image_headline", "image_subheading",
+                "facebook_image_headline", "facebook_image_subheading")
     if any(not isinstance(data.get(k), str) or not data[k].strip() for k in required):
-        raise ValueError("Missing content or image copy")
-    content = data["content"].strip()
-    words = len(content.split())
-    if not 110 <= words <= 260:
-        raise ValueError(f"Caption length outside 110-260 words: {words}")
-    if len(data["image_headline"]) > 58 or len(data["image_subheading"]) > 105:
-        raise ValueError("Image copy is too long")
-    if content.count("#") > 3:
+        raise ValueError("Missing platform content or image copy")
+    linked = data["content"].strip()
+    face = data["facebook_content"].strip()
+    if not 110 <= len(linked.split()) <= 260:
+        raise ValueError("LinkedIn caption must be 110-260 words")
+    if not 65 <= len(face.split()) <= 170:
+        raise ValueError("Facebook caption must be 65-170 words")
+    if linked.casefold() == face.casefold():
+        raise ValueError("LinkedIn and Facebook captions must be different")
+    for key in ("image_headline", "facebook_image_headline"):
+        if len(data[key].strip()) > 58:
+            raise ValueError(f"{key} too long")
+    for key in ("image_subheading", "facebook_image_subheading"):
+        if len(data[key].strip()) > 105:
+            raise ValueError(f"{key} too long")
+    if linked.count("#") > 3 or face.count("#") > 2:
         raise ValueError("Too many hashtags")
     banned = ("in today's digital landscape", "unlock your potential", "stop scrolling", "skyrocket your growth")
-    if any(x in content.lower() for x in banned):
+    if any(x in caption.lower() for caption in (linked, face) for x in banned):
         raise ValueError("Generic promotional wording detected")
     data["topic"] = topic
-    data["content"] = content
+    data["content"] = linked  # IMPORTANT: existing LinkedIn publisher reads this
+    data["facebook_content"] = face  # Facebook publisher should read this new key
     return data
 
 
 def generate_post(topic, models, recent_topics):
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    prompt = f"""You are an expert LinkedIn editorial strategist and technical practitioner.
-Create ONE original, useful post for a digital marketing/web development professional.
-Audience: founders, business owners, marketers, website owners, and potential B2B clients.
-Today: {today}. Content pillar: {topic}.
-Recently covered ideas (avoid similar angles): {json.dumps(recent_topics[-25:])}.
+    prompt = f"""You are a skilled B2B content strategist and editorial designer.
+Create TWO ORIGINAL posts on the same focused idea in {topic}: one for LinkedIn and one for Facebook.
+Today: {today}. Previously used ideas (avoid repeating angles): {json.dumps(recent_topics[-25:])}.
 
-Think carefully before writing: select a narrow real-world problem, one defensible insight,
-and a practical example or decision framework. Vary the opening and structure naturally.
-Write natural professional ENGLISH only, 140-210 words, no filler or emojis.
-Use short natural paragraphs, clear practical advice and at most 3 relevant hashtags.
-No invented numbers, experiences, client stories, tests, news, platform changes or guarantees.
-Never impersonate the author as having done work unless facts are supplied.
-No engagement bait, generic motivational hooks, exaggerated claims, or artificial questions.
-End naturally. Make the post specific enough to teach a reader something useful.
-Image headline must be specific to this post, 3-8 words, <=58 characters.
-Image subheading should summarize a concrete takeaway in <=105 characters.
-Return ONLY valid JSON (no Markdown) with string keys:
-"title", "content", "image_headline", "image_subheading".
+LINKEDIN (JSON key 'content'):
+- 140-210 words; professional English, credible practical advice, natural confident tone.
+- Start with a strong SPECIFIC insight or industry problem, not a cliche.
+- Use useful short paragraphs and, when it aids scanning, a numbered list or 2-3 bullet points.
+- At most 2 subtle markers such as →, •, or ✓; don't clutter with emoji.
+- End with a relevant takeaway or thoughtful question; up to 3 precise hashtags.
+
+FACEBOOK (JSON key 'facebook_content'):
+- 80-125 words; distinct opening, distinct explanation and CTA, never a shortened LinkedIn copy.
+- Friendly but professional, easy English, clear actionable tip or mini-checklist.
+- Include 2-3 short list lines, each optionally beginning with ✓ or →.
+- Keep it easy to scan. End with a natural helpful CTA, up to 2 hashtags.
+
+VISUAL COPY:
+- 'image_headline' (LinkedIn): sharp specific statement, 3-7 words, max 58 characters.
+- 'image_subheading' (LinkedIn): one practical takeaway, max 105 characters.
+- 'facebook_image_headline': different 3-7-word hook, max 58 characters.
+- 'facebook_image_subheading': one concise takeaway, max 105 characters.
+- Make headlines readable at a glance; NO hashtags, emoji, or fake statistics in image copy.
+
+Never invent numerical results, client stories, experience, credentials, algorithm facts or guarantees.
+Avoid hype, generic AI phrasing, emoji clutter, engagement bait, excessive hashtags and fake case studies.
+Return ONLY valid JSON with string keys:
+"title", "content", "facebook_content", "image_headline", "image_subheading", "facebook_image_headline", "facebook_image_subheading".
 """
     errors = []
     for model in models:
@@ -364,7 +385,7 @@ Return ONLY valid JSON (no Markdown) with string keys:
         url = f"{BASE_URL}/{model}:generateContent"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1600, "responseMimeType": "application/json"},
+            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 2400, "responseMimeType": "application/json"},
         }
         try:
             response = request_with_retry("POST", url, json=payload, timeout=90)
