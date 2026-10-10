@@ -45,6 +45,7 @@ def upload_image(author, path):
     return value['image']
 
 def publish(author, post):
+    # LinkedIn's existing keys and publish mechanism remain unchanged.
     caption = post['content'].strip()
     path = Path(post['image_path'])
     if not path.is_file() or not 110 <= len(caption.split()) <= 260:
