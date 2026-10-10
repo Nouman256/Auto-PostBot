@@ -1,5 +1,4 @@
 import json
-import textwrap
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
@@ -32,11 +31,19 @@ def wrap_to_width(draw, text, max_width, size, bold=False):
         lines.append(current)
     return lines
 
-def graphic(post, index):
+def check_icon(draw, x, y, accent):
+    draw.ellipse((x, y, x+45, y+45), fill='#213650', outline=accent, width=2)
+    draw.line([(x+11, y+23), (x+19, y+31), (x+34, y+14)], fill=accent, width=5, joint='curve')
+
+def graphic(post, index, platform='linkedin'):
     topic = post.get('topic', 'Web Development')
     accent, category, number = PALETTE.get(topic, PALETTE['Web Development'])
-    headline = post.get('image_headline', '').strip()
-    sub = post.get('image_subheading', '').strip()
+    if platform == 'facebook':
+        headline = post.get('facebook_image_headline', post.get('image_headline', '')).strip()
+        sub = post.get('facebook_image_subheading', post.get('image_subheading', '')).strip()
+    else:
+        headline = post.get('image_headline', '').strip()
+        sub = post.get('image_subheading', '').strip()
     if not headline or not sub:
         raise ValueError('Missing dynamic image headline or subheading')
     image = Image.new('RGB', (SIZE, SIZE), '#0B1322')
@@ -47,7 +54,6 @@ def graphic(post, index):
     d.rounded_rectangle((905, 127, 980, 194), radius=16, fill='#213650')
     d.text((925, 144), number, font=font(30, True), fill=accent)
     d.text((95, 260), category, font=font(26, True), fill=accent)
-
     size = 74
     while size >= 42:
         lines = wrap_to_width(d, headline.upper(), 860, size, True)
@@ -62,23 +68,25 @@ def graphic(post, index):
         y += size + 22
     if y > 720:
         raise ValueError('Image headline overflows')
-
     d.rounded_rectangle((95, 748, 985, 902), radius=24, fill='#0C182A', outline='#35506B', width=2)
     d.rounded_rectangle((120, 778, 128, 868), radius=4, fill=accent)
-    sub_size = 29
-    sub_lines = wrap_to_width(d, sub, 780, sub_size)
+    check_icon(d, 147, 800, accent)
+    sub_size = 27
+    sub_lines = wrap_to_width(d, sub, 700, sub_size)
     if len(sub_lines) > 3:
-        sub_size = 25
-        sub_lines = wrap_to_width(d, sub, 780, sub_size)
+        sub_size = 23
+        sub_lines = wrap_to_width(d, sub, 700, sub_size)
     if len(sub_lines) > 3:
         raise ValueError('Image subheading too long')
     sy = 778 + max(0, (92 - len(sub_lines) * (sub_size + 9)) // 2)
     for line in sub_lines:
-        d.text((151, sy), line, font=font(sub_size), fill='#D9E4F0')
+        d.text((211, sy), line, font=font(sub_size), fill='#D9E4F0')
         sy += sub_size + 9
     d.line((95, 950, 985, 950), fill='#36516B', width=2)
     d.text((95, 967), 'WEB  /  SEO  /  MARKETING', font=font(19, True), fill='#A7B9CB')
-    path = OUT / f'post_{index:02d}.png'
+    # Preserve original LinkedIn image filename and key; Facebook gets its own file.
+    name = f'post_{index:02d}.png' if platform == 'linkedin' else f'post_{index:02d}_facebook.png'
+    path = OUT / name
     image.save(path, optimize=True)
     return str(path)
 
@@ -86,8 +94,10 @@ def main():
     path = Path('generated_posts.json')
     posts = json.loads(path.read_text(encoding='utf-8'))
     for i, post in enumerate(posts, 1):
-        post['image_path'] = graphic(post, i)
-        print('Generated professional graphic:', post['image_path'])
+        post['image_path'] = graphic(post, i)  # old key stays intact
+        if post.get('facebook_content'):
+            post['facebook_image_path'] = graphic(post, i, 'facebook')
+        print('Generated graphics:', post['image_path'], post.get('facebook_image_path', ''))
     path.write_text(json.dumps(posts, ensure_ascii=False, indent=2), encoding='utf-8')
 
 if __name__ == '__main__':
