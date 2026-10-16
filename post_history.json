@@ -20,5 +20,27 @@
     "facebook_post_id": "",
     "published_at": "2026-10-16T08:30:07.531543+00:00",
     "mode": "dry_run"
+  },
+  {
+    "title": "Optimizing WordPress Database Queries with Transients",
+    "topic": "WordPress performance optimization using the Transients API",
+    "category": "technical",
+    "run_date": "2026-10-16",
+    "dedupe_key": "23bc7a35149518de9488",
+    "linkedin_post_id": "",
+    "facebook_post_id": "",
+    "published_at": "2026-10-16T08:31:17.961626+00:00",
+    "mode": "dry_run"
+  },
+  {
+    "title": "The Great Browser Compatibility Debate",
+    "topic": "Web development testing and standards",
+    "category": "engagement",
+    "run_date": "2026-10-16",
+    "dedupe_key": "73443bf62ee3ad4648e7",
+    "linkedin_post_id": "",
+    "facebook_post_id": "",
+    "published_at": "2026-10-16T08:31:17.961626+00:00",
+    "mode": "dry_run"
   }
 ]
