@@ -2,108 +2,103 @@ import json
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
+SIZE = 1080
 OUT = Path('generated_images')
 OUT.mkdir(exist_ok=True)
+FONT_DIR = Path('/usr/share/fonts/truetype/dejavu')
+PALETTE = {
+    'Web Development': ('#A9E8CB', 'WEB DEVELOPMENT', '01'),
+    'Search Engine Optimization (SEO)': ('#91C8FF', 'SEO & AI SEARCH', '02'),
+    'Digital Marketing': ('#FFC99B', 'DIGITAL MARKETING', '03'),
+}
 
-def get_font(size):
-    # System fonts fallback try karna taake server par error na aaye
-    for font_name in ["arial.ttf", "DejaVuSans-Bold.ttf", "Arial.ttf"]:
-        try:
-            return ImageFont.truetype(font_name, size)
-        except IOError:
-            continue
-    return ImageFont.load_default()
+def font(size, bold=False):
+    file = 'DejaVuSans-Bold.ttf' if bold else 'DejaVuSans.ttf'
+    return ImageFont.truetype(str(FONT_DIR / file), size)
 
-def create_professional_graphic(post, index, platform='linkedin'):
-    # Dimensions for modern social media (1200x630 pixels)
-    width, height = 1200, 630
-    img = Image.new("RGB", (width, height), color="#0F172A") # Dark slate premium background
-    draw = ImageDraw.Draw(img)
-
-    # Decorative top accent bar (Gradient/Solid brand color)
-    draw.rectangle([(0, 0), (width, 12)], fill="#3B82F6") # Modern Blue accent
-
-    # Branding / Watermark text top-left
-    font_brand = get_font(22)
-    draw.text((60, 50), "TECHVISION DIGITAL", fill="#60A5FA", font=font_brand)
-
-    # Category / Badge top-right
-    slot = post.get('slot', 'TECHNICAL INSIGHT').upper()
-    font_badge = get_font(20)
-    draw.text((width - 300, 50), f"// {slot}", fill="#94A3B8", font=font_badge)
-
-    # Main Title (The core hook of the post)
-    title = post.get('title', 'WordPress & SEO Expert Strategy')
-    font_title = get_font(42)
-    
-    # Text wrapping for title
-    margin = 60
-    max_width = width - 120
-    
-    # Word wrap logic
-    words = title.split()
-    lines = []
-    current_line = ""
+def wrap_to_width(draw, text, max_width, size, bold=False):
+    words = text.split()
+    lines, current = [], ''
     for word in words:
-        test_line = current_line + " " + word if current_line else word
-        bbox = font_title.getbbox(test_line)
-        if (bbox[2] - bbox[0]) <= max_width:
-            current_line = test_line
+        candidate = (current + ' ' + word).strip()
+        if draw.textbbox((0, 0), candidate, font=font(size, bold))[2] <= max_width:
+            current = candidate
         else:
-            lines.append(current_line)
-            current_line = word
-    if current_line:
-        lines.append(current_line)
+            if current:
+                lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines
 
-    # Draw title lines
-    y_text = 130
-    for line in lines[:3]: # Max 3 lines
-        draw.text((margin, y_text), line, fill="#F8FAFC", font=font_title)
-        y_text += 60
+def check_icon(draw, x, y, accent):
+    draw.ellipse((x, y, x+45, y+45), fill='#213650', outline=accent, width=2)
+    draw.line([(x+11, y+23), (x+19, y+31), (x+34, y+14)], fill=accent, width=5, joint='curve')
 
-    # Divider line
-    y_text += 20
-    draw.line([(margin, y_text), (width - margin, y_text)], fill="#334155", width=2)
-    y_text += 40
-
-    # Key bullet points or takeaway box extracted from content
-    font_body = get_font(26)
-    content_text = post.get('content', '')
-    # Extracting first sentence or bullet as a key highlight
-    highlights = [line.strip() for line in content_text.split('\n') if line.strip().startswith(('✓', '-', '•'))]
-    if not highlights:
-        highlights = ["✓ Enterprise Architecture & Core Web Vitals", "✓ Scalable Performance Optimization"]
-
-    for highlight in highlights[:3]:
-        draw.text((margin, y_text), highlight[:75], fill="#E2E8F0", font=font_body)
-        y_text += 45
-
-    # Footer Website / Tagline
-    font_footer = get_font(20)
-    draw.text((margin, height - 60), "www.techvisiondigital.com | Expert Insights", fill="#64748B", font=font_footer)
-
-    # Save file
-    suffix = "" if platform == 'linkedin' else "_facebook"
-    filename = f"post_{index:02d}{suffix}.png"
-    file_path = OUT / filename
-    img.save(file_path, "PNG", quality=95)
-    print(f"Professional graphic generated at: {file_path}")
-    return str(file_path)
+def graphic(post, index, platform='linkedin'):
+    topic = post.get('topic', 'Web Development')
+    accent, category, number = PALETTE.get(topic, PALETTE['Web Development'])
+    if platform == 'facebook':
+        headline = post.get('facebook_image_headline', post.get('image_headline', '')).strip()
+        sub = post.get('facebook_image_subheading', post.get('image_subheading', '')).strip()
+    else:
+        headline = post.get('image_headline', '').strip()
+        sub = post.get('image_subheading', '').strip()
+    if not headline or not sub:
+        raise ValueError('Missing dynamic image headline or subheading')
+    image = Image.new('RGB', (SIZE, SIZE), '#0B1322')
+    d = ImageDraw.Draw(image)
+    d.rounded_rectangle((45, 45, 1035, 1035), radius=38, fill='#132239', outline='#2C4055', width=2)
+    d.rounded_rectangle((95, 105, 180, 113), radius=4, fill=accent)
+    d.text((95, 145), 'INSIGHTS  /  DIGITAL GROWTH', font=font(22, True), fill='#CBD8E6')
+    d.rounded_rectangle((905, 127, 980, 194), radius=16, fill='#213650')
+    d.text((925, 144), number, font=font(30, True), fill=accent)
+    d.text((95, 260), category, font=font(26, True), fill=accent)
+    size = 74
+    while size >= 42:
+        lines = wrap_to_width(d, headline.upper(), 860, size, True)
+        if len(lines) <= 4:
+            break
+        size -= 4
+    if len(lines) > 4:
+        raise ValueError('Image headline does not fit')
+    y = 325
+    for line in lines:
+        d.text((92, y), line, font=font(size, True), fill='#FFFFFF')
+        y += size + 22
+    if y > 720:
+        raise ValueError('Image headline overflows')
+    d.rounded_rectangle((95, 748, 985, 902), radius=24, fill='#0C182A', outline='#35506B', width=2)
+    d.rounded_rectangle((120, 778, 128, 868), radius=4, fill=accent)
+    check_icon(d, 147, 800, accent)
+    sub_size = 27
+    sub_lines = wrap_to_width(d, sub, 700, sub_size)
+    if len(sub_lines) > 3:
+        sub_size = 23
+        sub_lines = wrap_to_width(d, sub, 700, sub_size)
+    if len(sub_lines) > 3:
+        raise ValueError('Image subheading too long')
+    sy = 778 + max(0, (92 - len(sub_lines) * (sub_size + 9)) // 2)
+    for line in sub_lines:
+        d.text((211, sy), line, font=font(sub_size), fill='#D9E4F0')
+        sy += sub_size + 9
+    d.line((95, 950, 985, 950), fill='#36516B', width=2)
+    d.text((95, 967), 'WEB  /  SEO  /  MARKETING', font=font(19, True), fill='#A7B9CB')
+    # Preserve original LinkedIn image filename and key; Facebook gets its own file.
+    name = f'post_{index:02d}.png' if platform == 'linkedin' else f'post_{index:02d}_facebook.png'
+    path = OUT / name
+    image.save(path, optimize=True)
+    return str(path)
 
 def main():
     path = Path('generated_posts.json')
-    if not path.exists():
-        print("generated_posts.json not found!")
-        return
-        
     posts = json.loads(path.read_text(encoding='utf-8'))
     for i, post in enumerate(posts, 1):
-        post['image_path'] = create_professional_graphic(post, i, 'linkedin')
+        post['image_path'] = graphic(post, i)  # old key stays intact
         if post.get('facebook_content'):
-            post['facebook_image_path'] = create_professional_graphic(post, i, 'facebook')
-            
-    path.write_text(json.dumps(posts, ensure_ascii=False, indent=2), encoding="utf-8")
-    print("Professional branded graphics generation completed.")
+            post['facebook_image_path'] = graphic(post, i, 'facebook')
+        print('Generated graphics:', post['image_path'], post.get('facebook_image_path', ''))
+    path.write_text(json.dumps(posts, ensure_ascii=False, indent=2), encoding='utf-8')
 
 if __name__ == '__main__':
     main()
