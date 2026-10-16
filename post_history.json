@@ -42,5 +42,27 @@
     "facebook_post_id": "",
     "published_at": "2026-10-16T08:31:17.961626+00:00",
     "mode": "dry_run"
+  },
+  {
+    "title": "Mitigating WordPress Admin-Ajax Bottlenecks",
+    "topic": "WordPress Performance",
+    "category": "technical",
+    "run_date": "2026-10-16",
+    "dedupe_key": "cf37aef4283b91c7b40c",
+    "linkedin_post_id": "",
+    "facebook_post_id": "",
+    "published_at": "2026-10-16T08:36:19.956518+00:00",
+    "mode": "dry_run"
+  },
+  {
+    "title": "The Great Plugin Paradox",
+    "topic": "WordPress ecosystem management",
+    "category": "engagement",
+    "run_date": "2026-10-16",
+    "dedupe_key": "62db9d36b82a3d0b9a52",
+    "linkedin_post_id": "",
+    "facebook_post_id": "",
+    "published_at": "2026-10-16T08:36:19.956518+00:00",
+    "mode": "dry_run"
   }
 ]
