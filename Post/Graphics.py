@@ -6,16 +6,17 @@ OUT = Path('generated_images')
 OUT.mkdir(exist_ok=True)
 
 def generate_pollinations_ai_image(prompt, output_filename):
-    """Pollinations.ai se professional aur realistic AI image generate karne ka function"""
+    """Pollinations.ai se high-quality, sharp aur professional AI image generate karna"""
     try:
-        # Professional look ke liye prompt ko mazeed enhance karna
-        enhanced_prompt = f"{prompt}, professional photography, highly detailed, modern technology workspace, 8k resolution, photorealistic, clean lighting"
+        # High quality parameters aur sharp focus ke sath prompt enhance karna
+        enhanced_prompt = f"{prompt}, professional commercial photography, ultra-detailed, 8k resolution, photorealistic, sharp focus, perfect studio lighting, corporate tech aesthetic"
         
         encoded_prompt = requests.utils.quote(enhanced_prompt)
-        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+        # width aur height specify karna taake image high resolution aur standard social media size mein bane
+        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1200&height=630&nologo=true&enhance=true"
         
-        print(f"Generating AI Image with prompt: {enhanced_prompt}")
-        response = requests.get(image_url, timeout=45)
+        print(f"Generating High-Quality AI Image: {enhanced_prompt}")
+        response = requests.get(image_url, timeout=60)
         
         if response.status_code == 200:
             file_path = OUT / output_filename
@@ -23,25 +24,11 @@ def generate_pollinations_ai_image(prompt, output_filename):
                 f.write(response.content)
             print(f"AI Image saved successfully at: {file_path}")
             return str(file_path)
+        else:
+            print(f"Pollinations API returned status code {response.status_code}")
     except Exception as e:
         print(f"Error generating AI image: {e}")
     return None
-
-def graphic(post, index, platform='linkedin'):
-    # Gemini se mila hua ai_image_prompt use karna
-    ai_prompt = post.get('ai_image_prompt') or "Professional developer working in a modern office setup with dual monitors, clean dark mode aesthetic"
-    
-    suffix = "" if platform == 'linkedin' else "_facebook"
-    filename = f"post_{index:02d}{suffix}.png"
-    
-    # Pollinations.ai se image fetch karna
-    image_path = generate_pollinations_ai_image(ai_prompt, filename)
-    
-    if image_path:
-        return image_path
-    else:
-        # Fallback agar API fail ho jaye
-        return str(OUT / filename)
 
 def main():
     path = Path('generated_posts.json')
@@ -51,12 +38,18 @@ def main():
         
     posts = json.loads(path.read_text(encoding='utf-8'))
     for i, post in enumerate(posts, 1):
-        post['image_path'] = graphic(post, i, 'linkedin')
-        if post.get('facebook_content'):
-            post['facebook_image_path'] = graphic(post, i, 'facebook')
+        # LinkedIn ke liye alag prompt
+        linkedin_prompt = post.get('ai_image_prompt') or "Professional web development dashboard and code architecture on sleek laptop screen"
+        linkedin_filename = f"post_{i:02d}.png"
+        post['image_path'] = generate_pollinations_ai_image(linkedin_prompt, linkedin_filename)
+        
+        # Facebook ke liye alag prompt (agar na ho toh fallback LinkedIn wala ya unique ho)
+        fb_prompt = post.get('facebook_ai_image_prompt') or post.get('ai_image_prompt') or "Modern developer workspace with clean aesthetic"
+        fb_filename = f"post_{i:02d}_facebook.png"
+        post['facebook_image_path'] = generate_pollinations_ai_image(fb_prompt, fb_filename)
             
     path.write_text(json.dumps(posts, ensure_ascii=False, indent=2), encoding="utf-8")
-    print("Graphics generation completed with professional AI images.")
+    print("Graphics generation completed with distinct, high-quality platform images.")
 
 if __name__ == '__main__':
     main()
