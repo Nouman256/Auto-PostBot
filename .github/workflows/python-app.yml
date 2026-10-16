@@ -1,7 +1,6 @@
-
 name: Auto Post Bot
 
-'on':
+on:
   workflow_dispatch:
     inputs:
       publish_linkedin:
@@ -17,19 +16,17 @@ name: Auto Post Bot
         default: false
 
       post_slot:
-        description: "Select posting topic"
+        description: "Select posting slot"
         type: choice
         required: true
-        default: web
+        default: technical
         options:
-          - web
-          - seo
-          - marketing
+          - technical
+          - entertainment
 
   schedule:
-    - cron: '7 3 * * *'
-    - cron: '7 11 * * *'
-    - cron: '7 19 * * *'
+    - cron: '0 4 * * *'   # Subah Technical Post ke liye
+    - cron: '0 14 * * *'  # Dopahar/Sham Entertainment & Meme Post ke liye
 
 permissions:
   contents: read
@@ -65,10 +62,10 @@ jobs:
       - name: Generate AI Post
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          POST_SLOT: ${{ github.event_name == 'workflow_dispatch' && inputs.post_slot || (github.event.schedule == '7 3 * * *' && 'web' || github.event.schedule == '7 11 * * *' && 'seo' || github.event.schedule == '7 19 * * *' && 'marketing' || 'web') }}
+          POST_SLOT: ${{ github.event_name == 'workflow_dispatch' && inputs.post_slot || (github.event.schedule == '0 4 * * *' && 'technical' || 'entertainment') }}
         run: python Post/Bot.py
 
-      - name: Generate Premium Graphics
+      - name: Generate Graphics & AI Images
         run: python Post/Graphics.py
 
       - name: LinkedIn Auto Posting
