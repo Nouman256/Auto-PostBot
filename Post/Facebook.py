@@ -21,7 +21,18 @@ def post_to_facebook():
         
     post = posts[0]
     text = post.get("facebook_content") or post.get("content", "")
+    
+    # Image path check aur fallback logic
     image_path = post.get("facebook_image_path") or post.get("image_path", "")
+    if not os.path.exists(image_path):
+        image_path = post.get("image_path", "")
+    if not os.path.exists(image_path):
+        images = list(Path("generated_images").glob("*.png"))
+        if images:
+            image_path = str(images[0])
+            
+    if not os.path.exists(image_path):
+        raise RuntimeError("No valid image file found for Facebook posting.")
     
     url = f"https://graph.facebook.com/v19.0/{page_id}/photos"
     
@@ -42,7 +53,6 @@ def post_to_facebook():
         post_id = res_data.get("post_id") or res_data.get("id")
         print(f"Facebook post published successfully! ID: {post_id}")
         
-        # Safe history update
         history_path = Path("post_history.json")
         history = json.loads(history_path.read_text(encoding="utf-8")) if history_path.exists() else []
         if not isinstance(history, list):
