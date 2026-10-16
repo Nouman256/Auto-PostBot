@@ -64,5 +64,27 @@
     "facebook_post_id": "",
     "published_at": "2026-10-16T08:36:19.956518+00:00",
     "mode": "dry_run"
+  },
+  {
+    "title": "Auditing Core Web Vitals via PerformanceObserver",
+    "topic": "Auditing Core Web Vitals via PerformanceObserver",
+    "category": "technical",
+    "run_date": "2026-10-16",
+    "dedupe_key": "424e37398faeda1bec0d",
+    "linkedin_post_id": "urn:li:share:7516781030708736002",
+    "facebook_post_id": "1164945550041796_122138953035386783",
+    "published_at": "2026-10-16T08:44:21.328169+00:00",
+    "mode": "published"
+  },
+  {
+    "title": "The Great Staging Environment Dilemma",
+    "topic": "Web development workflows",
+    "category": "engagement",
+    "run_date": "2026-10-16",
+    "dedupe_key": "6b2260eb22391dd5fbe3",
+    "linkedin_post_id": "urn:li:share:7516781034315837440",
+    "facebook_post_id": "1164945550041796_122138953083386783",
+    "published_at": "2026-10-16T08:44:21.328169+00:00",
+    "mode": "published"
   }
 ]
