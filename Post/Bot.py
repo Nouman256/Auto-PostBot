@@ -5,12 +5,7 @@ from pathlib import Path
 import time
 import random
 from datetime import datetime, timezone
-
 import requests
-
-# ======================================
-# CONFIGURATION
-# ======================================
 
 API_KEY = os.getenv("GEMINI_API_KEY")
 BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
@@ -39,7 +34,6 @@ MAX_DELAY = 60
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 SESSION = requests.Session()
 
-
 def api_error_message(response):
     try:
         data = response.json()
@@ -48,11 +42,9 @@ def api_error_message(response):
     except (ValueError, AttributeError):
         return f"HTTP {response.status_code}"
 
-
 def retry_delay(response, attempt):
     delay = min(BASE_DELAY * (2 ** attempt), MAX_DELAY)
     return min(max(0, delay) + random.uniform(0, 1), 120)
-
 
 def request_with_retry(method, url, *, timeout=60, **kwargs):
     last_error = None
@@ -77,7 +69,6 @@ def request_with_retry(method, url, *, timeout=60, **kwargs):
             time.sleep(retry_delay(response, attempt))
     raise RuntimeError(f"Request failed after {MAX_RETRIES} attempts. Last error: {last_error}")
 
-
 def get_available_models():
     models = []
     page_token = None
@@ -97,7 +88,6 @@ def get_available_models():
             break
     return sorted(set(models), key=lambda n: (0 if "flash-lite" in n.lower() else 1 if "flash" in n.lower() else 3 if "pro" in n.lower() else 2, n))
 
-
 def extract_content(data):
     candidates = data.get("candidates", [])
     if not candidates:
@@ -108,47 +98,42 @@ def extract_content(data):
         raise ValueError("Gemini returned empty content.")
     return content
 
-
 def validate_post(data, topic, slot):
     if not isinstance(data, dict):
         raise ValueError("AI response is not a JSON object")
-    required = ("content", "facebook_content", "ai_image_prompt")
+    required = ("content", "facebook_content", "ai_image_prompt", "facebook_ai_image_prompt")
     if any(not isinstance(data.get(k), str) or not data[k].strip() for k in required):
-        raise ValueError("Missing platform content or image prompt")
+        raise ValueError("Missing platform content or distinct image prompts")
     
     data["topic"] = topic
     data["slot"] = slot
     return data
 
-
 def generate_post(slot, models, recent_topics):
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     topics_list = CATEGORIES.get(slot, CATEGORIES["technical"])
-    
-    # yahan topic sahi se define hoga
     topic = random.choice(topics_list)
 
-    prompt = f"""You are an elite B2B Tech & SEO Content Strategist. Create TWO DISTINCT professional social media posts about {topic}.
+    prompt = f"""You are an elite B2B Tech & SEO Content Strategist. Create TWO DISTINCT professional social media posts about: {topic}.
 Today: {today}. Avoid repeating these recent angles: {json.dumps(recent_topics[-25:])}.
 
-CRITICAL WRITING RULES (SEO & Professional Standards):
-- NEVER write heavy unformatted blocks of text or boring paragraphs.
-- Use a strong attention-grabbing hook at the beginning.
-- Break down technical concepts into clean, scannable bullet points (using ✓, →, or •).
-- Maintain an authoritative yet approachable expert tone.
-- Add relevant high-value hashtags at the end.
+CRITICAL WRITING RULES:
+- Use strong hooks, clean scannable bullet points (✓, →, •), and professional spacing. No heavy paragraphs.
 
 LINKEDIN (JSON key 'content'):
-- 120-180 words. Professional B2B style, focused on deep technical value, architecture, or optimization strategy.
+- 120-180 words. Professional B2B style, deep technical depth.
 
 FACEBOOK (JSON key 'facebook_content'):
-- 80-130 words. Slightly more conversational, community-driven, actionable quick tip or checklist format (Distinct from LinkedIn).
+- 80-130 words. Actionable, community-driven quick tips or checklist format (Distinct from LinkedIn).
 
-AI IMAGE GENERATION PROMPT (JSON key 'ai_image_prompt'):
-- Create a detailed, highly professional visual prompt for an AI image generator (e.g., modern web development workspace, clean minimalist UI design, professional SEO analytics dashboard on a sleek laptop, cinematic lighting, 8k, photorealistic). NO text inside the image prompt.
+AI IMAGE PROMPT FOR LINKEDIN (JSON key 'ai_image_prompt'):
+- Create a specific, highly relevant, ultra-realistic visual prompt representing the exact technical core of this topic (e.g., modern web performance metrics dashboard, clean code editor interface with performance graphs, professional UI/UX design workflow). NO text inside the image.
+
+AI IMAGE PROMPT FOR FACEBOOK (JSON key 'facebook_ai_image_prompt'):
+- Create a separate, distinct, highly engaging, professional visual prompt for Facebook representing the topic from a visual angle (e.g., modern dual-monitor developer desk setup showing web analytics, sleek minimalist tech workspace with soft cinematic lighting). NO text inside the image.
 
 Return ONLY valid JSON with string keys:
-"title", "content", "facebook_content", "ai_image_prompt".
+"title", "content", "facebook_content", "ai_image_prompt", "facebook_ai_image_prompt".
 """
     errors = []
     for model in models:
@@ -168,7 +153,6 @@ Return ONLY valid JSON with string keys:
             errors.append(f"{model}: {error}")
     raise RuntimeError("Could not generate post: " + (errors[-1] if errors else "unknown"))
 
-
 def main():
     if not API_KEY:
         raise RuntimeError("GEMINI_API_KEY secret is missing")
@@ -186,8 +170,7 @@ def main():
     post["created_at"] = datetime.now(timezone.utc).isoformat()
     
     Path("generated_posts.json").write_text(json.dumps([post], ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Created validated {slot} post successfully.")
-
+    print(f"Created validated {slot} post with distinct platform graphics prompts.")
 
 if __name__ == "__main__":
     main()
