@@ -3,72 +3,60 @@ import json
 from pathlib import Path
 import requests
 
-PAGE_ID = os.getenv('FACEBOOK_PAGE_ID', '').strip()
-PAGE_TOKEN = os.getenv('FACEBOOK_PAGE_ACCESS_TOKEN', '').strip()
-API_VERSION = os.getenv('FACEBOOK_API_VERSION', 'v26.0')
-PUBLISH = os.getenv('PUBLISH_FACEBOOK', 'false').lower() == 'true'
-POST_FILE = Path('generated_posts.json')
-DEFAULT_IMAGE_FILE = Path('generated_images/post_01.png')
-
-
-def load_post():
-    if not POST_FILE.exists():
-        raise FileNotFoundError('generated_posts.json is missing')
-    with POST_FILE.open('r', encoding='utf-8') as file:
-        posts = json.load(file)
-    if not isinstance(posts, list) or not posts:
-        raise ValueError('No generated posts found')
-    post = posts[0]
-    # Prefer Facebook-specific copy, preserving the old single-caption format as a fallback.
-    caption = (post.get('facebook_content') or post.get('content') or '').strip()
-    if not caption:
-        raise ValueError('Facebook caption is empty')
-    image_path = Path(post.get('facebook_image_path') or str(DEFAULT_IMAGE_FILE))
-    if not image_path.is_file():
-        raise FileNotFoundError(f'Image missing: {image_path}')
-    return caption, image_path
-
-
-def publish_facebook(caption, image_path):
-    if not PAGE_ID:
-        raise RuntimeError('FACEBOOK_PAGE_ID is missing')
-    if not PAGE_TOKEN:
-        raise RuntimeError('FACEBOOK_PAGE_ACCESS_TOKEN is missing')
-    url = f'https://graph.facebook.com/{API_VERSION}/{PAGE_ID}/photos'
-    print('Publishing to TechVision Facebook Page...')
-    with image_path.open('rb') as image:
-        response = requests.post(
-            url,
-            data={'caption': caption, 'published': 'true'},
-            files={'source': (image_path.name, image, 'image/png')},
-            headers={'Authorization': f'Bearer {PAGE_TOKEN}'},
-            timeout=90,
-        )
-    try:
-        result = response.json()
-    except ValueError:
-        raise RuntimeError('Facebook API returned invalid JSON')
-    if not response.ok or 'id' not in result:
-        error = result.get('error', {})
-        raise RuntimeError('Facebook publishing failed: ' + str(error.get('message', response.status_code)))
-    print('FACEBOOK POST PUBLISHED SUCCESSFULLY!')
-    print('Facebook Photo ID:', result['id'])
-    if result.get('post_id'):
-        print('Facebook Post ID:', result['post_id'])
-
-
-def main():
-    print('Starting Facebook Auto Posting Bot')
-    caption, image_path = load_post()
-    print('Post prepared successfully')
-    print('Caption length:', len(caption))
-    print('Image:', image_path)
-    if not PUBLISH:
-        print('FACEBOOK DRY RUN SUCCESSFUL')
-        print('No Facebook post published')
+def post_to_facebook():
+    page_id = os.getenv("FACEBOOK_PAGE_ID")
+    access_token = os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN")
+    
+    if not page_id or not access_token:
+        raise RuntimeError("Facebook Page ID or Access Token is missing")
+        
+    posts_path = Path("generated_posts.json")
+    if not posts_path.exists():
+        print("No generated_posts.json found.")
         return
-    publish_facebook(caption, image_path)
+        
+    posts = json.loads(posts_path.read_text(encoding="utf-8"))
+    if not posts:
+        return
+        
+    post = posts[0]
+    text = post.get("facebook_content") or post.get("content", "")
+    image_path = post.get("facebook_image_path") or post.get("image_path", "")
+    
+    url = f"https://graph.facebook.com/v19.0/{page_id}/photos"
+    
+    with open(image_path, "rb") as img_file:
+        files = {
+            "source": img_file
+        }
+        data = {
+            "caption": text,
+            "access_token": access_token
+        }
+        
+        response = requests.post(url, data=data, files=files)
+        if not response.ok:
+            raise RuntimeError(f"Failed to post to Facebook: {response.text}")
+            
+        res_data = response.json()
+        post_id = res_data.get("post_id") or res_data.get("id")
+        print(f"Facebook post published successfully! ID: {post_id}")
+        
+        # Safe history update
+        history_path = Path("post_history.json")
+        history = json.loads(history_path.read_text(encoding="utf-8")) if history_path.exists() else []
+        if not isinstance(history, list):
+            history = []
+            
+        history.append({
+            "title": post.get("title", "Facebook Post"),
+            "topic": post.get("topic", "General"),
+            "slot": post.get("slot", "technical"),
+            "platform": "facebook",
+            "post_id": post_id,
+            "created_at": post.get("created_at")
+        })
+        history_path.write_text(json.dumps(history, ensure_ascii=False, indent=2), encoding="utf-8")
 
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    post_to_facebook()
