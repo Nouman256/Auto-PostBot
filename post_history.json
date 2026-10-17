@@ -86,5 +86,27 @@
     "facebook_post_id": "1164945550041796_122138953083386783",
     "published_at": "2026-10-16T08:44:21.328169+00:00",
     "mode": "published"
+  },
+  {
+    "title": "Preventing Layout Shifts with Aspect-Ratio Boxes",
+    "topic": "CSS aspect-ratio for Cumulative Layout Shift (CLS) reduction",
+    "category": "technical",
+    "run_date": "2026-10-17",
+    "dedupe_key": "d67d33155eea8ca560dc",
+    "linkedin_post_id": "urn:li:share:7517221439419318273",
+    "facebook_post_id": "1164945550041796_122139262389386783",
+    "published_at": "2026-10-17T13:54:24.166857+00:00",
+    "mode": "published"
+  },
+  {
+    "title": "The Content Freshness Dilemma",
+    "topic": "Website Content Refresh vs. New Creation",
+    "category": "engagement",
+    "run_date": "2026-10-17",
+    "dedupe_key": "ac69fce7d0c4d929a228",
+    "linkedin_post_id": "urn:li:share:7517221443508695040",
+    "facebook_post_id": "1164945550041796_122139262449386783",
+    "published_at": "2026-10-17T13:54:24.166857+00:00",
+    "mode": "published"
   }
 ]
