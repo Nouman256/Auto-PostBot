@@ -108,5 +108,27 @@
     "facebook_post_id": "1164945550041796_122139262449386783",
     "published_at": "2026-10-17T13:54:24.166857+00:00",
     "mode": "published"
+  },
+  {
+    "title": "Detecting Render-Blocking CSS via Coverage Tab",
+    "topic": "Web Performance",
+    "category": "technical",
+    "run_date": "2026-10-18",
+    "dedupe_key": "5359e7b6b0760412c367",
+    "linkedin_post_id": "urn:li:share:7517583778786246656",
+    "facebook_post_id": "1164945550041796_122139498045386783",
+    "published_at": "2026-10-18T13:54:13.817546+00:00",
+    "mode": "published"
+  },
+  {
+    "title": "The CMS Optimization Paradox",
+    "topic": "Website Performance and Feature Bloat",
+    "category": "engagement",
+    "run_date": "2026-10-18",
+    "dedupe_key": "bb95c9ce81bd38386cf9",
+    "linkedin_post_id": "urn:li:share:7517583784624726016",
+    "facebook_post_id": "1164945550041796_122139498129386783",
+    "published_at": "2026-10-18T13:54:13.817546+00:00",
+    "mode": "published"
   }
 ]
