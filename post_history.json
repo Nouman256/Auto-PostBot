@@ -130,5 +130,27 @@
     "facebook_post_id": "1164945550041796_122139498129386783",
     "published_at": "2026-10-18T13:54:13.817546+00:00",
     "mode": "published"
+  },
+  {
+    "title": "Mitigating DOM Bloat via CSS Content-Visibility",
+    "topic": "CSS content-visibility for DOM performance",
+    "category": "technical",
+    "run_date": "2026-10-19",
+    "dedupe_key": "eb93a314c3b4efde2396",
+    "linkedin_post_id": "urn:li:share:7517950831061757954",
+    "facebook_post_id": "1164945550041796_122139761697386783",
+    "published_at": "2026-10-19T14:12:45.299039+00:00",
+    "mode": "published"
+  },
+  {
+    "title": "The Staging Site Paradox",
+    "topic": "Website deployment and client reviews",
+    "category": "engagement",
+    "run_date": "2026-10-19",
+    "dedupe_key": "63fcb659f30a451bdf56",
+    "linkedin_post_id": "urn:li:share:7517950837432778752",
+    "facebook_post_id": "1164945550041796_122139761811386783",
+    "published_at": "2026-10-19T14:12:45.299039+00:00",
+    "mode": "published"
   }
 ]
