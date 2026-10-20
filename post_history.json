@@ -152,5 +152,27 @@
     "facebook_post_id": "1164945550041796_122139761811386783",
     "published_at": "2026-10-19T14:12:45.299039+00:00",
     "mode": "published"
+  },
+  {
+    "title": "Reducing Cumulative Layout Shift via Explicit Image Sizing",
+    "topic": "Web Performance",
+    "category": "technical",
+    "run_date": "2026-10-20",
+    "dedupe_key": "bc4b9c57158614131627",
+    "linkedin_post_id": "urn:li:share:7518312291189170176",
+    "facebook_post_id": "1164945550041796_122139998235386783",
+    "published_at": "2026-10-20T14:09:05.854666+00:00",
+    "mode": "published"
+  },
+  {
+    "title": "The Great Accessibility vs. Aesthetics Balance",
+    "topic": "Web Design Philosophy",
+    "category": "engagement",
+    "run_date": "2026-10-20",
+    "dedupe_key": "04d018e8ee697d6e8b27",
+    "linkedin_post_id": "urn:li:share:7518312297182973952",
+    "facebook_post_id": "1164945550041796_122139998283386783",
+    "published_at": "2026-10-20T14:09:05.854666+00:00",
+    "mode": "published"
   }
 ]
