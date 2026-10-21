@@ -174,5 +174,27 @@
     "facebook_post_id": "1164945550041796_122139998283386783",
     "published_at": "2026-10-20T14:09:05.854666+00:00",
     "mode": "published"
+  },
+  {
+    "title": "Mitigating WordPress Resource Exhaustion via Object Caching",
+    "topic": "WordPress Object Caching",
+    "category": "technical",
+    "run_date": "2026-10-21",
+    "dedupe_key": "1bb7431babd4e585d543",
+    "linkedin_post_id": "urn:li:share:7518675022001885186",
+    "facebook_post_id": "1164945550041796_122140265721386783",
+    "published_at": "2026-10-21T14:10:24.744123+00:00",
+    "mode": "published"
+  },
+  {
+    "title": "The Deployment Day Ritual",
+    "topic": "Web development release cycles",
+    "category": "engagement",
+    "run_date": "2026-10-21",
+    "dedupe_key": "214b8f1fe4249b293cb5",
+    "linkedin_post_id": "urn:li:share:7518675028197019648",
+    "facebook_post_id": "1164945550041796_122140265799386783",
+    "published_at": "2026-10-21T14:10:24.744123+00:00",
+    "mode": "published"
   }
 ]
