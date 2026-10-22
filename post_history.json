@@ -196,5 +196,27 @@
     "facebook_post_id": "1164945550041796_122140265799386783",
     "published_at": "2026-10-21T14:10:24.744123+00:00",
     "mode": "published"
+  },
+  {
+    "title": "Optimizing WordPress REST API for Faster Admin Performance",
+    "topic": "WordPress REST API Optimization",
+    "category": "technical",
+    "run_date": "2026-10-22",
+    "dedupe_key": "70373848e4cfab2a3840",
+    "linkedin_post_id": "urn:li:share:7519036511108079616",
+    "facebook_post_id": "1164945550041796_122140534893386783",
+    "published_at": "2026-10-22T14:06:51.522472+00:00",
+    "mode": "published"
+  },
+  {
+    "title": "The CMS Update Anxiety",
+    "topic": "Maintenance and updates",
+    "category": "engagement",
+    "run_date": "2026-10-22",
+    "dedupe_key": "32124fbddc45af5ec812",
+    "linkedin_post_id": "urn:li:share:7519036517533675520",
+    "facebook_post_id": "1164945550041796_122140534959386783",
+    "published_at": "2026-10-22T14:06:51.522472+00:00",
+    "mode": "published"
   }
 ]
