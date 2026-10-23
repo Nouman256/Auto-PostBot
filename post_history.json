@@ -218,5 +218,27 @@
     "facebook_post_id": "1164945550041796_122140534959386783",
     "published_at": "2026-10-22T14:06:51.522472+00:00",
     "mode": "published"
+  },
+  {
+    "title": "Eliminating Unused JavaScript via Coverage Tab",
+    "topic": "Web Performance",
+    "category": "technical",
+    "run_date": "2026-10-23",
+    "dedupe_key": "eb052776b9ba38049b1d",
+    "linkedin_post_id": "urn:li:share:7519399506292023296",
+    "facebook_post_id": "1164945550041796_122140777647386783",
+    "published_at": "2026-10-23T14:09:16.363519+00:00",
+    "mode": "published"
+  },
+  {
+    "title": "The Browser Tab Ecosystem",
+    "topic": "Professional digital workspace habits",
+    "category": "engagement",
+    "run_date": "2026-10-23",
+    "dedupe_key": "5dbe6116aa9df0431ba8",
+    "linkedin_post_id": "urn:li:share:7519399510242963456",
+    "facebook_post_id": "1164945550041796_122140777695386783",
+    "published_at": "2026-10-23T14:09:16.363519+00:00",
+    "mode": "published"
   }
 ]
