@@ -240,5 +240,27 @@
     "facebook_post_id": "1164945550041796_122140777695386783",
     "published_at": "2026-10-23T14:09:16.363519+00:00",
     "mode": "published"
+  },
+  {
+    "title": "Optimizing Third-Party Connection Latency with Preconnect",
+    "topic": "Web Performance and Resource Hints",
+    "category": "technical",
+    "run_date": "2026-10-24",
+    "dedupe_key": "b1c9f7c774db603e0b3b",
+    "linkedin_post_id": "urn:li:share:7519758714954739714",
+    "facebook_post_id": "1164945550041796_122141025351386783",
+    "published_at": "2026-10-24T13:56:37.981206+00:00",
+    "mode": "published"
+  },
+  {
+    "title": "The Browser Tab Ecosystem Evolution",
+    "topic": "Digital workflow habits",
+    "category": "engagement",
+    "run_date": "2026-10-24",
+    "dedupe_key": "34546b1c3195df3f5e3b",
+    "linkedin_post_id": "urn:li:share:7519758720206262272",
+    "facebook_post_id": "1164945550041796_122141025435386783",
+    "published_at": "2026-10-24T13:56:37.981206+00:00",
+    "mode": "published"
   }
 ]
