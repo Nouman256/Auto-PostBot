@@ -262,5 +262,27 @@
     "facebook_post_id": "1164945550041796_122141025435386783",
     "published_at": "2026-10-24T13:56:37.981206+00:00",
     "mode": "published"
+  },
+  {
+    "title": "Optimizing WordPress Font Loading with CSS Font-Display",
+    "topic": "Web Performance",
+    "category": "technical",
+    "run_date": "2026-10-25",
+    "dedupe_key": "0786c16e71375ed81128",
+    "linkedin_post_id": "urn:li:share:7520121236564107264",
+    "facebook_post_id": "1164945550041796_122141277537386783",
+    "published_at": "2026-10-25T13:57:10.019133+00:00",
+    "mode": "published"
+  },
+  {
+    "title": "The CMS Update Anxiety",
+    "topic": "The reality of website maintenance and client expectations",
+    "category": "engagement",
+    "run_date": "2026-10-25",
+    "dedupe_key": "a77f9cf245a791933500",
+    "linkedin_post_id": "urn:li:share:7520121242461376512",
+    "facebook_post_id": "1164945550041796_122141277597386783",
+    "published_at": "2026-10-25T13:57:10.019133+00:00",
+    "mode": "published"
   }
 ]
