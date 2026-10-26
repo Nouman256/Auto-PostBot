@@ -284,5 +284,27 @@
     "facebook_post_id": "1164945550041796_122141277597386783",
     "published_at": "2026-10-25T13:57:10.019133+00:00",
     "mode": "published"
+  },
+  {
+    "title": "Reducing WordPress TTFB via Object Caching",
+    "topic": "WordPress Performance",
+    "category": "technical",
+    "run_date": "2026-10-26",
+    "dedupe_key": "2453c30e820b28096178",
+    "linkedin_post_id": "urn:li:share:7520503765993463808",
+    "facebook_post_id": "1164945550041796_122141533779386783",
+    "published_at": "2026-10-26T15:17:14.210022+00:00",
+    "mode": "published"
+  },
+  {
+    "title": "The Refactoring Paradox",
+    "topic": "Code maintenance and technical debt",
+    "category": "engagement",
+    "run_date": "2026-10-26",
+    "dedupe_key": "885127f5d0496ea4ea34",
+    "linkedin_post_id": "urn:li:share:7520503770011848704",
+    "facebook_post_id": "1164945550041796_122141533833386783",
+    "published_at": "2026-10-26T15:17:14.210022+00:00",
+    "mode": "published"
   }
 ]
