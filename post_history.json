@@ -306,5 +306,27 @@
     "facebook_post_id": "1164945550041796_122141533833386783",
     "published_at": "2026-10-26T15:17:14.210022+00:00",
     "mode": "published"
+  },
+  {
+    "title": "Implementing HTTP/3 Prioritization for Asset Loading",
+    "topic": "Web Performance",
+    "category": "technical",
+    "run_date": "2026-10-27",
+    "dedupe_key": "a4a285ff8096e2b8f4aa",
+    "linkedin_post_id": "urn:li:share:7520851175026450432",
+    "facebook_post_id": "1164945550041796_122141785707386783",
+    "published_at": "2026-10-27T14:17:41.759323+00:00",
+    "mode": "published"
+  },
+  {
+    "title": "The Deployment Day Pulse Check",
+    "topic": "Web Development Workflows",
+    "category": "engagement",
+    "run_date": "2026-10-27",
+    "dedupe_key": "320e0a8890b15c5e119e",
+    "linkedin_post_id": "urn:li:share:7520851181552766977",
+    "facebook_post_id": "1164945550041796_122141785773386783",
+    "published_at": "2026-10-27T14:17:41.759323+00:00",
+    "mode": "published"
   }
 ]
