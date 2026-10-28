@@ -328,5 +328,27 @@
     "facebook_post_id": "1164945550041796_122141785773386783",
     "published_at": "2026-10-27T14:17:41.759323+00:00",
     "mode": "published"
+  },
+  {
+    "title": "Safely Prerendering High-Intent Pages with Speculation Rules",
+    "topic": "Speculation Rules API implementation for faster page transitions",
+    "category": "technical",
+    "run_date": "2026-10-28",
+    "dedupe_key": "7b965beb0d5cb3dd2cc1",
+    "linkedin_post_id": "urn:li:share:7521215237145157632",
+    "facebook_post_id": "1164945550041796_122142029667386783",
+    "published_at": "2026-10-28T14:24:22.764360+00:00",
+    "mode": "published"
+  },
+  {
+    "title": "The Infinite Redesign Loop",
+    "topic": "Website Redesign Decisions",
+    "category": "engagement",
+    "run_date": "2026-10-28",
+    "dedupe_key": "b6eeff94b8e0f6eadf2f",
+    "linkedin_post_id": "urn:li:share:7521215244153536512",
+    "facebook_post_id": "1164945550041796_122142029757386783",
+    "published_at": "2026-10-28T14:24:22.764360+00:00",
+    "mode": "published"
   }
 ]
