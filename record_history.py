@@ -1,44 +1,20 @@
-import json
-import hashlib
+import json, hashlib
 from pathlib import Path
-from datetime import datetime, timezone
-
-POST_FILE = Path("generated_posts.json")
-HISTORY_FILE = Path("post_history.json")
-
+from datetime import datetime
+from zoneinfo import ZoneInfo
+POST=Path('generated_posts.json'); HIST=Path('post_history.json'); TZ=ZoneInfo('Asia/Karachi')
 def main():
-    posts = json.loads(POST_FILE.read_text(encoding="utf-8"))
-    history = []
-    if HISTORY_FILE.exists():
-        try:
-            existing = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
-            if isinstance(existing, list):
-                history = existing
-        except json.JSONDecodeError:
-            print("Warning: history file invalid; starting a fresh history list")
-    seen = {item.get("dedupe_key") for item in history if isinstance(item, dict)}
-    now = datetime.now(timezone.utc).isoformat()
-    for post in posts:
-        key = post.get("dedupe_key") or hashlib.sha256(
-            f"{post.get('run_date')}|{post.get('category')}|{post.get('title')}".encode()
-        ).hexdigest()[:20]
-        if key in seen:
-            print(f"History already contains this concept key: {key}")
-            continue
-        history.append({
-            "title": post.get("title", ""),
-            "topic": post.get("topic", ""),
-            "category": post.get("category", ""),
-            "run_date": post.get("run_date", ""),
-            "dedupe_key": key,
-            "linkedin_post_id": post.get("_linkedin_post_id", ""),
-            "facebook_post_id": post.get("_facebook_post_id", ""),
-            "published_at": now,
-            "mode": "published" if post.get("_linkedin_post_id") or post.get("_facebook_post_id") else "dry_run",
-        })
+    posts=json.loads(POST.read_text(encoding='utf-8'))
+    try: history=json.loads(HIST.read_text(encoding='utf-8')) if HIST.exists() else []
+    except (ValueError,OSError): history=[]
+    if not isinstance(history,list): history=[]
+    seen={x.get('dedupe_key') for x in history if isinstance(x,dict)}
+    now=datetime.now(TZ).isoformat()
+    for p in posts:
+        key=p.get('dedupe_key') or hashlib.sha256(f"{p.get('run_date')}|{p.get('slot')}|{p.get('title')}".encode()).hexdigest()[:20]
+        if key in seen: print('History already contains:',key); continue
+        li=p.get('_linkedin_post_id',''); fb=p.get('_facebook_post_id','')
+        history.append({'title':p.get('title',''),'topic':p.get('topic',''),'category':p.get('category',''),'slot':p.get('slot',''),'run_date':p.get('run_date',''),'dedupe_key':key,'linkedin_post_id':li,'facebook_post_id':fb,'published_at':now,'mode':'published' if li or fb else 'dry_run'})
         seen.add(key)
-    HISTORY_FILE.write_text(json.dumps(history[-500:], ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"History updated: {len(history[-500:])} records retained")
-
-if __name__ == "__main__":
-    main()
+    HIST.write_text(json.dumps(history[-500:],ensure_ascii=False,indent=2),encoding='utf-8'); print(f'History saved: {min(len(history),500)} records')
+if __name__=='__main__': main()
