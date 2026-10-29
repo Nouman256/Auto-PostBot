@@ -1,19 +1,26 @@
+
 name: TechVision Social Auto Posting
 
 on:
   schedule:
-    # Pakistan time is UTC+5: 07:00 UTC = 12:00 PKT; 12:00 UTC = 17:00 PKT
-    - cron: "0 7,12 * * *"
+    # 12:00 PM Pakistan time (07:00 UTC)
+    - cron: "0 7 * * *"
+    # 5:00 PM Pakistan time (12:00 UTC)
+    - cron: "0 12 * * *"
+
   workflow_dispatch:
     inputs:
       post_slot:
         description: "Choose which post to generate"
         required: true
         type: choice
-        options: [noon, evening]
+        options:
+          - noon
+          - evening
         default: noon
+
       publish_live:
-        description: "Actually publish (requires both repository publishing variables to be true)"
+        description: "Actually publish to social platforms"
         required: true
         type: boolean
         default: false
@@ -29,76 +36,148 @@ jobs:
   generate-and-publish:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
+
       LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
       LINKEDIN_VERSION: ${{ vars.LINKEDIN_VERSION || '202609' }}
+
       FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
       FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
       FACEBOOK_API_VERSION: ${{ vars.FACEBOOK_API_VERSION || 'v26.0' }}
+
       POST_SLOT: ${{ inputs.post_slot || (github.event.schedule == '0 7 * * *' && 'noon' || 'evening') }}
+
       PUBLISH_LINKEDIN: ${{ ((github.event_name == 'schedule' || inputs.publish_live == true) && vars.PUBLISH_LINKEDIN == 'true') && 'true' || 'false' }}
       PUBLISH_FACEBOOK: ${{ ((github.event_name == 'schedule' || inputs.publish_live == true) && vars.PUBLISH_FACEBOOK == 'true') && 'true' || 'false' }}
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
+
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Verify Gemini SDK
+        run: |
+          python -c "from google import genai; print('Google GenAI SDK installed successfully')"
+
+      - name: Show scheduled slot
+        run: |
+          echo "Pakistan time slot: $POST_SLOT"
+          echo "Model: $GEMINI_MODEL"
+          echo "LinkedIn publishing enabled: $PUBLISH_LINKEDIN"
+          echo "Facebook publishing enabled: $PUBLISH_FACEBOOK"
+
       - name: Prevent duplicate slot on same Pakistan date
         run: |
           python - <<'PY'
-          import json, os
+          import json
+          import os
           from pathlib import Path
           from datetime import datetime
           from zoneinfo import ZoneInfo
-          path=Path('post_history.json')
-          history=[]
+
+          path = Path("post_history.json")
+          history = []
+
           if path.exists():
-              try: history=json.loads(path.read_text(encoding='utf-8'))
-              except (ValueError,OSError): history=[]
-          today=datetime.now(ZoneInfo('Asia/Karachi')).strftime('%Y-%m-%d')
-          slot=os.environ['POST_SLOT']
-          if any(isinstance(x,dict) and x.get('run_date')==today and x.get('slot')==slot and x.get('mode')=='published' for x in history):
-              raise SystemExit(f'A live {slot} post is already recorded for {today} Pakistan time. Stopping to prevent duplicates.')
-          print(f'No published {slot} post recorded for {today}.')
+              try:
+                  history = json.loads(path.read_text(encoding="utf-8"))
+              except (ValueError, OSError):
+                  history = []
+
+          today = datetime.now(ZoneInfo("Asia/Karachi")).strftime("%Y-%m-%d")
+          slot = os.environ["POST_SLOT"]
+
+          already_published = any(
+              isinstance(item, dict)
+              and item.get("run_date") == today
+              and item.get("slot") == slot
+              and item.get("mode") == "published"
+              for item in history
+          )
+
+          if already_published:
+              raise SystemExit(
+                  f"A live {slot} post is already recorded for {today}. "
+                  "Stopping to prevent duplicates."
+              )
+
+          print(f"No published {slot} post recorded for {today}.")
           PY
+
       - name: Generate one post for this time slot
         run: python generate_posts.py
+
       - name: Generate separate LinkedIn and Facebook images
         run: python generate_images.py
+
       - name: Validate and preview content
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          posts=json.loads(Path('generated_posts.json').read_text(encoding='utf-8'))
-          assert len(posts)==1, 'Expected one concept per run'
-          p=posts[0]
-          for k in ('image_path','facebook_image_path'):
-              assert Path(p[k]).is_file(), f'Missing image: {p[k]}'
-          print('Slot:',p['slot'],'Category:',p['category'],'Title:',p['title'])
-          print('\nLINKEDIN\n',p['linkedin_content'])
-          print('\nFACEBOOK\n',p['facebook_content'])
-          print('LinkedIn image:',p['image_path'])
-          print('Facebook image:',p['facebook_image_path'])
+
+          posts = json.loads(
+              Path("generated_posts.json").read_text(encoding="utf-8")
+          )
+
+          assert len(posts) == 1, "Expected exactly one post concept"
+
+          post = posts[0]
+
+          for key in (
+              "linkedin_content",
+              "facebook_content",
+              "image_path",
+              "facebook_image_path",
+          ):
+              assert post.get(key), f"Missing required field: {key}"
+
+          for key in ("image_path", "facebook_image_path"):
+              assert Path(post[key]).is_file(), f"Missing image file: {post[key]}"
+
+          print("Slot:", post["slot"])
+          print("Category:", post["category"])
+          print("Title:", post["title"])
+          print("\nLINKEDIN PREVIEW\n", post["linkedin_content"])
+          print("\nFACEBOOK PREVIEW\n", post["facebook_content"])
+          print("LinkedIn image:", post["image_path"])
+          print("Facebook image:", post["facebook_image_path"])
           PY
+
       - name: Publish to LinkedIn or dry run
         run: python publish_linkedin.py
+
       - name: Publish to Facebook or dry run
         run: python publish_facebook.py
+
       - name: Record post history
         run: python record_history.py
+
       - name: Commit history only
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add post_history.json
-          if git diff --cached --quiet; then echo "No history changes to commit."; else git commit -m "Update social post history [skip ci]"; git push; fi
+
+          if git diff --cached --quiet; then
+            echo "No history changes to commit."
+          else
+            git commit -m "Update social post history [skip ci]"
+            git push
+          fi
