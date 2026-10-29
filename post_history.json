@@ -350,5 +350,17 @@
     "facebook_post_id": "1164945550041796_122142029757386783",
     "published_at": "2026-10-28T14:24:22.764360+00:00",
     "mode": "published"
+  },
+  {
+    "title": "Optimizing LCP Image Discovery with Fetch Priority",
+    "topic": "Web Performance and Core Web Vitals",
+    "category": "technical",
+    "slot": "noon",
+    "run_date": "2026-10-29",
+    "dedupe_key": "021dfd8147e301f745c2",
+    "linkedin_post_id": "",
+    "facebook_post_id": "",
+    "published_at": "2026-10-29T20:15:28.669056+05:00",
+    "mode": "dry_run"
   }
 ]
