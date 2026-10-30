@@ -374,5 +374,17 @@
     "facebook_post_id": "1164945550041796_122142479841386783",
     "published_at": "2026-10-30T12:47:54.113228+05:00",
     "mode": "published"
+  },
+  {
+    "title": "The Discovery Phase Dilemma",
+    "topic": "Project Scoping and Client Onboarding",
+    "category": "engagement",
+    "slot": "evening",
+    "run_date": "2026-10-30",
+    "dedupe_key": "0d33bc538b77f2115e04",
+    "linkedin_post_id": "urn:li:share:7521915266520309760",
+    "facebook_post_id": "1164945550041796_122142537195386783",
+    "published_at": "2026-10-30T17:45:55.597336+05:00",
+    "mode": "published"
   }
 ]
