@@ -362,5 +362,17 @@
     "facebook_post_id": "",
     "published_at": "2026-10-29T20:15:28.669056+05:00",
     "mode": "dry_run"
+  },
+  {
+    "title": "Managing Faceted Navigation Crawl Waste",
+    "topic": "Technical SEO and Crawl Budget Optimization",
+    "category": "technical",
+    "slot": "noon",
+    "run_date": "2026-10-30",
+    "dedupe_key": "c30ef63aefd65597753e",
+    "linkedin_post_id": "urn:li:share:7521840267759337472",
+    "facebook_post_id": "1164945550041796_122142479841386783",
+    "published_at": "2026-10-30T12:47:54.113228+05:00",
+    "mode": "published"
   }
 ]
