@@ -434,5 +434,17 @@
     "facebook_post_id": "1164945550041796_122143010313386783",
     "published_at": "2026-11-01T17:43:19.726390+05:00",
     "mode": "published"
+  },
+  {
+    "title": "Optimizing Asset Delivery with Stale-While-Revalidate",
+    "topic": "HTTP Caching and Web Performance",
+    "category": "technical",
+    "slot": "noon",
+    "run_date": "2026-11-02",
+    "dedupe_key": "1bf2469d92c9d5e05b85",
+    "linkedin_post_id": "urn:li:share:7522934809103638528",
+    "facebook_post_id": "1164945550041796_122143190019386783",
+    "published_at": "2026-11-02T13:17:15.121114+05:00",
+    "mode": "published"
   }
 ]
