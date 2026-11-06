@@ -446,5 +446,17 @@
     "facebook_post_id": "1164945550041796_122143190019386783",
     "published_at": "2026-11-02T13:17:15.121114+05:00",
     "mode": "published"
+  },
+  {
+    "title": "The Client Communication Dilemma: Real-Time Chat vs. Asynchronous Portals",
+    "topic": "Client Communication and Project Management Workflows",
+    "category": "engagement",
+    "slot": "evening",
+    "run_date": "2026-11-06",
+    "dedupe_key": "04314cdc272c048e0061",
+    "linkedin_post_id": "urn:li:share:7524458289435348992",
+    "facebook_post_id": "1164945550041796_122144261811386783",
+    "published_at": "2026-11-06T18:10:59.908279+05:00",
+    "mode": "published"
   }
 ]
