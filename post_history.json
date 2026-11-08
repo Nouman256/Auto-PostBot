@@ -482,5 +482,17 @@
     "facebook_post_id": "1164945550041796_122144488737386783",
     "published_at": "2026-11-07T17:48:22.696929+05:00",
     "mode": "published"
+  },
+  {
+    "title": "Optimizing Long Tasks with scheduler.yield() for Better INP",
+    "topic": "Interaction to Next Paint (INP) and JavaScript Main Thread Optimization",
+    "category": "technical",
+    "slot": "noon",
+    "run_date": "2026-11-08",
+    "dedupe_key": "3506359740287d7d201e",
+    "linkedin_post_id": "urn:li:share:7525196499471892480",
+    "facebook_post_id": "1164945550041796_122144767599386783",
+    "published_at": "2026-11-08T19:04:23.283327+05:00",
+    "mode": "published"
   }
 ]
