@@ -518,5 +518,17 @@
     "facebook_post_id": "1164945550041796_122145073119386783",
     "published_at": "2026-11-10T03:06:36.791605+05:00",
     "mode": "published"
+  },
+  {
+    "title": "Preventing Search Indexation of Internal Search Results",
+    "topic": "Technical SEO and Crawl Hygiene",
+    "category": "technical",
+    "slot": "noon",
+    "run_date": "2026-11-11",
+    "dedupe_key": "8adb75df7baa80463343",
+    "linkedin_post_id": "urn:li:share:7526296572586987520",
+    "facebook_post_id": "1164945550041796_122145471135386783",
+    "published_at": "2026-11-11T19:55:40.723232+05:00",
+    "mode": "published"
   }
 ]
