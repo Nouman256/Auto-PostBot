@@ -542,5 +542,17 @@
     "facebook_post_id": "1164945550041796_122146416381386783",
     "published_at": "2026-11-15T19:29:35.807447+05:00",
     "mode": "published"
+  },
+  {
+    "title": "The Design Review Dilemma: Mobile-First Strategy vs. Desktop-First Signoff",
+    "topic": "Responsive Web Design and Client Approval Workflows",
+    "category": "engagement",
+    "slot": "evening",
+    "run_date": "2026-11-15",
+    "dedupe_key": "b737af6ff91a77f71e2e",
+    "linkedin_post_id": "urn:li:share:7527802496837115904",
+    "facebook_post_id": "1164945550041796_122146454535386783",
+    "published_at": "2026-11-15T23:39:41.250937+05:00",
+    "mode": "published"
   }
 ]
