@@ -554,5 +554,17 @@
     "facebook_post_id": "1164945550041796_122146454535386783",
     "published_at": "2026-11-15T23:39:41.250937+05:00",
     "mode": "published"
+  },
+  {
+    "title": "Canonicalizing PDFs via HTTP Response Headers",
+    "topic": "HTTP Header Canonicalization for Non-HTML Files",
+    "category": "technical",
+    "slot": "noon",
+    "run_date": "2026-11-19",
+    "dedupe_key": "f3788a0af83081ab2142",
+    "linkedin_post_id": "urn:li:share:7529215862247940096",
+    "facebook_post_id": "1164945550041796_122147357949386783",
+    "published_at": "2026-11-19T21:15:53.224125+05:00",
+    "mode": "published"
   }
 ]
